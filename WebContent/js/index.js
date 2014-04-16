@@ -1,8 +1,7 @@
 $(document).ready(function() {
 	console.log("The document is ready!");
 
-	// Page header gradually changes color between blue and
-	// purple
+	// Page header gradually changes color between blue and purple
 	var count = 100;
 	var direction = 1;
 	setInterval(function() {
@@ -25,7 +24,6 @@ $(document).ready(function() {
 		}
 	});
 
-	
 	$("#timeButton").click(function getCompanies() {
 		var successCallback = function(data) {
 			console.log("Success!");
@@ -38,7 +36,7 @@ $(document).ready(function() {
 		var errorCallback = function() {
 			console.log("Error!");
 		};
-		controller.server.companyQuery(null, successCallback, errorCallback );
+		controller.server.companyQuery(null, successCallback, errorCallback);
 	});
 
 });

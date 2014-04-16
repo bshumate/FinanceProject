@@ -53,8 +53,7 @@ function companyQuery() {
 		alert("Error: ToDate formatted incorrectly.");
 		return;
 	}
-	if (fromDate != "") { // Check for months 1-12, day that is valid for
-		// the given month
+	if (fromDate != "") { // Check for months 1-12, day that is valid for the given month
 		var month = fromDate.substr(0, 2);
 		var day = fromDate.substr(3, 5);
 		var dateValidation = daysInMonths[month];
@@ -63,8 +62,7 @@ function companyQuery() {
 			return;
 		}
 	}
-	if (toDate != "") { // Check for months 1-12, day that is valid for
-		// the given month
+	if (toDate != "") { // Check for months 1-12, day that is valid for the given month
 		var month = toDate.substr(0, 2);
 		var day = toDate.substr(3, 5);
 		var dateValidation = daysInMonths[month];
@@ -108,7 +106,6 @@ function companyQuery() {
 			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td><a href=\"#\">" + data['symbol'][i] + "</a></td><td>" + data['startPrice'][i] + "</td><td>" + data['endPrice'][i] + "</td><td>"
 				+ data['returnRate'][i] + "%</td><td>" + data['high'][i] + "</td><td>" + data['low'][i] + "</td><td>" + data['risk'][i] + "%</td></tr>");
 		}
-		// $("#company-table-div").empty().append($_blankCompanyTable);
 		$("#company-table-body").empty().append(tableUpdate);
 		$("#companyAlertSuccess").show();
 

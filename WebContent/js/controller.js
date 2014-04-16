@@ -25,9 +25,7 @@ var controller = new function() {
 			showAllBut : []
 		};
 	};
-	
-	
-	
+
 	var server = {
 		// error handler functions
 		handleAjaxError : function(jqXHR, textStatus, errorThrown, apiMethod) {
@@ -92,8 +90,12 @@ var controller = new function() {
 		},
 
 		filters : {
-			companyFilter : function() { return new CompanyFilter(); },
-			fundFilter : function() { return new FundFilter(); }
+			companyFilter : function() {
+				return new CompanyFilter();
+			},
+			fundFilter : function() {
+				return new FundFilter();
+			}
 		}
 	};
 

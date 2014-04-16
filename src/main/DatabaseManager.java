@@ -363,18 +363,13 @@ public class DatabaseManager {
 	}
 
 	private int maxDaysInMonth(int month) {
-		int days = 31;
+		int days = 31;  // January, March, May, July, August, October, December
 		if (month == 2) {
-			days = 28;
-		} else if (month == 4) {
-			days = 30;
-		} else if (month == 6) {
-			days = 30;
-		} else if (month == 9) {
-			days = 30;
-		} else if (month == 11) {
-			days = 30;
+			days = 29;  // February (has 29 days on leap years)
+		} else if (month == 4 || month == 6 || month == 9 || month == 11) {
+			days = 30;  // April, June, September, November
 		}
+		
 		return days;
 	}
 }
