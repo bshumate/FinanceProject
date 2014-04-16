@@ -1,0 +1,69 @@
+@CHARSET "UTF-8";
+
+html {
+	background: url(../img/stock.jpg) no-repeat center center fixed;
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	padding-top: 20px;
+	font-size: 16px;
+	font-family: "Open Sans", serif;
+	background: transparent;
+}
+
+h1 {
+	font-family: "Abel", Arial, sans-serif;
+	font-weight: 400;
+	font-size: 80px;
+}
+
+.margin-base-vertical {
+	margin: 40px 0;
+}
+
+.page-header {
+	background-color: rgba(255, 255, 255, 0.75);
+}
+
+.nav-tabs>li.active>a,.nav-tabs>li.active>a:hover {
+	color: #B00000;
+}
+
+.nav-tabs>li>a,.nav->tabs>li>a:hover {
+	color: #444488;
+}
+
+#pane1>pre {
+	background-color: rgba(100, 100, 100, .5);
+}
+
+.container {
+	padding-top: 1em;
+}
+
+.container>.row>.panel {
+	/*border: 1px solid;*/
+	border-radius: 35px;
+	padding-bottom: 1em;
+}
+/* Override B3 .panel adding a subtly transparent background */
+.panel {
+	background-color: rgba(255, 255, 255, 0.9);
+}
+
+.table tbody tr:hover td {
+	background-color: rgba(44, 44, 88, 0.3);
+}
+
+.table thead tr th {
+	background-color: rgba(50, 20, 100, 0.2);
+}
+
+.table thead tr th.column:hover,.table thead tr th.tablesorter-headerAsc,.table thead tr th.tablesorter-headerDesc
+	{
+	background-color: rgba(50, 20, 150, 0.5);
+}
