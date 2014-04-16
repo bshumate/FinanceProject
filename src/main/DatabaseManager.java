@@ -9,7 +9,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -80,6 +79,7 @@ public class DatabaseManager {
 			// Deal with the case where the market was closed on the start date
 			int responseSize = 0, counter = 0;
 			while (responseSize == 0) {
+				System.out.println("Query: " + query);
 				responseSize = executeQuery(query, response);
 				if (responseSize > 0)
 					continue;
@@ -92,8 +92,10 @@ public class DatabaseManager {
 				fromDay--;
 				if (fromDay == 0) {
 					fromMonth--;
-					if (fromMonth == 0)
+					if (fromMonth == 0) {
 						fromMonth = 12;
+						fromYear--;
+					}
 					fromDay = maxDaysInMonth(fromMonth);
 				}
 				query.setInt(1, fromDay);
@@ -144,12 +146,6 @@ public class DatabaseManager {
 				responseMap.put(ticker, c);
 			}
 
-			// If the user only wants to view strictly increasing/decreasing stocks, find stocks that meet that criteria
-			if(increasing || decreasing) {
-				
-			}
-			
-			
 			// Calculate return
 			for (String s : responseMap.keySet()) {
 				CompanyQueryResponseEntry c = responseMap.get(s);
@@ -182,9 +178,11 @@ public class DatabaseManager {
 
 			// Calculate high, low, and risk
 			response = new HashMap<String, String[]>();
-			for (String s : responseMap.keySet()) {
+			String[] responseMapKeySet = responseMap.keySet().toArray(new String[responseMap.size()]);
+			for (String s : responseMapKeySet) {
+				// Query the database for a list of daily prices for the given ticker within the given date range
 				query = con
-						.prepareStatement("SELECT price FROM Quotes WHERE ((year > ? AND year < ?) "
+						.prepareStatement("SELECT price, year FROM Quotes WHERE ((year > ? AND year < ?) "
 								+ "OR ((year=? AND month < ?) OR (year=? AND month > ?)) OR ((year = ? AND month = ? AND day <= ?) "
 								+ "OR (year = ? AND month = ? AND day >= ?))) AND ticker=? ORDER BY year asc, month asc, day asc;");
 				query.setInt(1, fromYear);
@@ -200,12 +198,19 @@ public class DatabaseManager {
 				query.setInt(11, fromMonth);
 				query.setInt(12, fromDay);
 				query.setString(13, s);
-				executeQuery(query, response);
+				responseSize = executeQuery(query, response);
+
+				// Iterate through responses. Find the high and low. Calculate risk. Get each year-end price.
 				float high = -1;
 				float low = Float.MAX_VALUE;
 				float maxPercentDropFromHigh = 0;
-				for (String priceString : response.get("price")) {
-					float price = Float.parseFloat(priceString);
+				String[] prices = response.get("price");
+				String[] years = response.get("year");
+				ArrayList<Float> annualPrices = new ArrayList<Float>(); // Find and store a yearly price list
+				annualPrices.add(Float.parseFloat(prices[0])); // Add the first price to the list
+				int currentYear = Integer.parseInt(years[0]);
+				for (int i = 0; i < responseSize; i++) {
+					float price = Float.parseFloat(prices[i]);
 					if (price > high) { // Find new high price
 						high = price;
 					}
@@ -215,11 +220,48 @@ public class DatabaseManager {
 					if (((high - price) / high) > maxPercentDropFromHigh) { // Find new risk
 						maxPercentDropFromHigh = ((high - price) / high);
 					}
+					if (currentYear < Integer.parseInt(years[i])) {
+						// If the year of this price is greater than the last price, the last price was the year-end price.
+						currentYear = Integer.parseInt(years[i]);
+						annualPrices.add(Float.parseFloat(prices[i - 1]));
+					}
 				}
-				CompanyQueryResponseEntry c = responseMap.get(s);
-				c.setAttribute(CompanyQueryResponseEntry.HIGH, high);
-				c.setAttribute(CompanyQueryResponseEntry.LOW, low);
-				c.setAttribute(CompanyQueryResponseEntry.RISK, 100 * (maxPercentDropFromHigh));
+				annualPrices.add(Float.parseFloat(prices[responseSize-1])); // Add the last price to the list
+				boolean shouldRemove = false;
+				if (increasing) {
+					// The user only wants to see stocks that have increased every year
+					float lastPrice = -1;
+					for (Float f : annualPrices) {
+						if (f.floatValue() >= lastPrice) {
+							lastPrice = f.floatValue();
+						} else {
+							// This stock is not increasing annually. Don't add it to the list
+							shouldRemove = true;
+							break;
+						}
+					}
+				} else if (decreasing) {
+					// The user only wants to see stocks that have increased every year
+					float lastPrice = Float.MAX_VALUE;
+					for (Float f : annualPrices) {
+						if (f.floatValue() <= lastPrice) {
+							lastPrice = f.floatValue();
+						} else {
+							// This stock is not decreasing annually. Don't add it to the list
+							shouldRemove = true;
+							break;
+						}
+					}
+				}
+				if (shouldRemove) {
+					responseMap.remove(s);
+				} else {
+					System.out.println(s + ": " + annualPrices.toString());
+					CompanyQueryResponseEntry c = responseMap.get(s);
+					c.setAttribute(CompanyQueryResponseEntry.HIGH, high);
+					c.setAttribute(CompanyQueryResponseEntry.LOW, low);
+					c.setAttribute(CompanyQueryResponseEntry.RISK, 100 * (maxPercentDropFromHigh));
+				}
 			}
 
 			// Format all results into JSON and return
@@ -363,13 +405,13 @@ public class DatabaseManager {
 	}
 
 	private int maxDaysInMonth(int month) {
-		int days = 31;  // January, March, May, July, August, October, December
+		int days = 31; // January, March, May, July, August, October, December
 		if (month == 2) {
-			days = 29;  // February (has 29 days on leap years)
+			days = 29; // February (has 29 days on leap years)
 		} else if (month == 4 || month == 6 || month == 9 || month == 11) {
-			days = 30;  // April, June, September, November
+			days = 30; // April, June, September, November
 		}
-		
+
 		return days;
 	}
 }

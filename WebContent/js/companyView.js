@@ -103,8 +103,9 @@ function companyQuery() {
 		var tableUpdate = '';
 		var i = 0;
 		for (var i = 0; i < data['symbol'].length; i++) {
-			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td><a href=\"#\">" + data['symbol'][i] + "</a></td><td>" + data['startPrice'][i] + "</td><td>" + data['endPrice'][i] + "</td><td>"
-				+ data['returnRate'][i] + "%</td><td>" + data['high'][i] + "</td><td>" + data['low'][i] + "</td><td>" + data['risk'][i] + "%</td></tr>");
+			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td><a href=\"http://finance.yahoo.com/q?s=" + data['symbol'][i] + "\" target=\"_blank\">" + data['symbol'][i] + "</a></td><td>"
+				+ data['startPrice'][i] + "</td><td>" + data['endPrice'][i] + "</td><td>" + data['returnRate'][i] + "%</td><td>" + data['high'][i] + "</td><td>" + data['low'][i] + "</td><td>"
+				+ data['risk'][i] + "%</td></tr>");
 		}
 		$("#company-table-body").empty().append(tableUpdate);
 		$("#companyAlertSuccess").show();

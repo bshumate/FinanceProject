@@ -16,10 +16,7 @@
 					id="companyIncDecMenu">
 					<option>Increasing</option>
 					<option>Decreasing</option>
-				</select> every <select id="companyIntervalMenu">
-					<option>Month</option>
-					<option>Year</option>
-				</select>
+				</select> every year
 
 				<div class="radio">
 					<label> <input type="radio" name="optionsRadios"

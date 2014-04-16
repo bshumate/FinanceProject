@@ -1,7 +1,6 @@
 package main;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.SQLException;
 
 import javax.servlet.ServletException;
@@ -54,6 +53,10 @@ public class FinanceServlet extends HttpServlet {
 		} catch (JSONException e) {
 			response.setStatus(400);
 			response.getWriter().write(e.getMessage());
+			e.printStackTrace();
+		} catch (Exception e) {
+			response.setStatus(400);
+			response.getWriter().write("Internal error");
 			e.printStackTrace();
 		}
 
