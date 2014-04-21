@@ -1,17 +1,3 @@
-var daysInMonths = new Array();
-daysInMonths["01"] = 31;
-daysInMonths["02"] = 28;
-daysInMonths["03"] = 31;
-daysInMonths["04"] = 30;
-daysInMonths["05"] = 31;
-daysInMonths["06"] = 30;
-daysInMonths["07"] = 31;
-daysInMonths["08"] = 31;
-daysInMonths["09"] = 30;
-daysInMonths["10"] = 31;
-daysInMonths["11"] = 30;
-daysInMonths["12"] = 31;
-
 function companyViewInit() {
 	$("#companySubmitButton").click(function() {
 		companyQuery();
@@ -32,7 +18,6 @@ function companyViewInit() {
 	$("#quotesAlertErrorButton").click(function(e) {
 		$("#quotesAlertError").hide();
 	});
-
 };
 
 function companyQuery() {
@@ -42,34 +27,11 @@ function companyQuery() {
 	var filter = controller.filters.companyFilter();
 
 	// Input validation
-	var dateRegEx = new RegExp("[0-9][0-9](\/|-)[0-9][0-9](\/|-)[0-9][0-9][0-9][0-9]");
 	var fromDate = $("#companyFromDate").val();
 	var toDate = $("#companyToDate").val();
-	if (fromDate != "" && dateRegEx.exec(fromDate) == null) { // Check for mm/dd/yyyy
-		alert("Error: FromDate formatted incorrectly.");
-		return;
-	}
-	if (toDate != "" && dateRegEx.exec(toDate) == null) { // Check for mm/dd/yyyy
-		alert("Error: ToDate formatted incorrectly.");
-		return;
-	}
-	if (fromDate != "") { // Check for months 1-12, day that is valid for the given month
-		var month = fromDate.substr(0, 2);
-		var day = fromDate.substr(3, 5);
-		var dateValidation = daysInMonths[month];
-		if (dateValidation == null || dateValidation < parseInt(day) || parseInt(day) < 1) {
-			alert("Error: Invalid FromDate.");
-			return;
-		}
-	}
-	if (toDate != "") { // Check for months 1-12, day that is valid for the given month
-		var month = toDate.substr(0, 2);
-		var day = toDate.substr(3, 5);
-		var dateValidation = daysInMonths[month];
-		if (dateValidation == null || dateValidation < parseInt(day) || parseInt(day) < 1) {
-			alert("Error: Invalid ToDate.");
-			return;
-		}
+	var formatType = "MM-DD-YYYY";
+	if (validateDate(fromDate, toDate, formatType) != true) {
+		return; // There was an error processing the date
 	}
 
 	// Get increasing/decreasing value
@@ -99,7 +61,10 @@ function companyQuery() {
 
 		console.log("Success!");
 		console.log(data);
-		console.log(data['symbol']);
+		if (data['symbol'] == null || data['startPrice'] == null || data['endPrice'] == null || data['returnRate'] == null || data['high'] == null || data['low'] == null || data['risk'] == null) {
+			errorCallback("Error: Server response was missing necessary data.");
+			return;
+		}
 		var tableUpdate = '';
 		var i = 0;
 		for (var i = 0; i < data['symbol'].length; i++) {
@@ -117,7 +82,7 @@ function companyQuery() {
 	};
 	var errorCallback = function(errorMessage) {
 		$("#companyAlertError").show();
-		$("#companyAlertErrorText").text(errorMessage);
+		$("#companyAlertErrorText").html(errorMessage);
 	};
 	controller.server.companyQuery(filter, successCallback, errorCallback);
 	return message;

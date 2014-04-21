@@ -11,30 +11,35 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONException;
 
+import queryTypes.CompanyQuery;
+import queryTypes.FundQuery;
+import queryTypes.UpdateQuotes;
+import utilities.Utilities;
+
 @WebServlet("/FinanceServlet")
 public class FinanceServlet extends HttpServlet {
 
-	private static final long serialVersionUID = -5732935417833331356L;
-	private static DatabaseManager dbManager;
+	private static final long serialVersionUID = 5955178292419622844L;
 
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String message = "";
 		try {
-			if (dbManager == null) {
-				dbManager = DatabaseManager.getInstance();
-			}
 			String method = request.getParameter("method");
 			String json = request.getParameter("json");
 			System.out.println("Request: method=" + method + "   json=" + json + "\n");
 			if (method != null) {
-				if (method.equals(Properties.METHOD_COMPANY_QUERY)) {
+				if (method.equals(Utilities.METHOD_COMPANY_QUERY)) {
 					System.out.println("Company Query request received.\n");
-					message = dbManager.companyQuery(json);
-				} else if (method.equals(Properties.METHOD_UPDATE_QUOTES)) {
+					message = CompanyQuery.companyQuery(json);
+				} else if (method.equals(Utilities.METHOD_UPDATE_QUOTES)) {
 					System.out.println("Update Quotes request received.\n");
-					message = dbManager.updateQuotes(json);
+					message = UpdateQuotes.updateQuotes(json);
+				} else if (method.equals(Utilities.METHOD_FUND_QUERY)) {
+					System.out.println("Fund Query request received");
+					message = FundQuery.fundQuery(json);
 				} else {
 					// Ignore the request if it does not match one of the method types
+					response.setStatus(501);
 				}
 			}
 			response.setHeader("Cache-Control", "no-cache");

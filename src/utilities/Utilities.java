@@ -1,11 +1,22 @@
-package main;
+package utilities;
 
-public class Properties {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 
-	protected static final String METHOD_COMPANY_QUERY = "companyQuery";
-	protected static final String METHOD_UPDATE_QUOTES = "updateQuotes";
+public class Utilities {
 	
-	protected static String stockList[] = { "MMM", "ABT", "ACE", "ACN", "ACT", "ADBE", "AES", "AET", "AFL", "A", "GAS",
+	public static final String METHOD_COMPANY_QUERY = "companyQuery";
+	public static final String METHOD_UPDATE_QUOTES = "updateQuotes";
+	public static final String METHOD_FUND_QUERY = "fundQuery";
+	public static final String METHOD_ADD_TRANSACTION = "addTransaction";
+	
+	public static final int EARLIEST_YEAR = 2005;
+	public static final int EARLIEST_MONTH = 1;
+	public static final int EARLIEST_DAY = 3;
+	
+	public static final String stockList[] = { "MMM", "ABT", "ACE", "ACN", "ACT", "ADBE", "AES", "AET", "AFL", "A", "GAS",
 		"APD", "ARG", "AKAM", "AA", "ALXN", "ATI", "AGN", "ADS", "ALL", "ALTR", "MO", "AMZN", "AEE", "AEP", "AXP",
 		"AIG", "AMT", "AMP", "ABC", "AME", "AMGN", "APH", "APC", "ADI", "AON", "APA", "AIV", "AAPL", "AMAT", "ADM",
 		"AIZ", "T", "ADSK", "ADP", "AN", "AZO", "AVB", "AVY", "AVP", "BHI", "BLL", "BAC", "BK", "BCR", "BAX",
@@ -37,4 +48,49 @@ public class Properties {
 		"UNM", "URBN", "VFC", "VLO", "VAR", "VTR", "VRSN", "VZ", "VRTX", "VIAB", "VNO", "VMC", "WMT", "WAG", "DIS",
 		"GHC", "WM", "WAT", "WLP", "WFC", "WDC", "WU", "WY", "WHR", "WFM", "WMB", "WIN", "WEC", "WYN", "WYNN",
 		"XEL", "XRX", "XLNX", "XL", "YHOO", "YUM", "ZMH", "ZION" };
+	
+	public static boolean isCompany(String c) {
+		ArrayList<String> companyList = new ArrayList<String>(Arrays.asList(stockList));
+		return companyList.contains(c);
+	}
+	
+	public static int maxDaysInMonth(int month) {
+		int days = 31; // January, March, May, July, August, October, December
+		if (month == 2) {
+			days = 29; // February (has 29 days on leap years)
+		} else if (month == 4 || month == 6 || month == 9 || month == 11) {
+			days = 30; // April, June, September, November
+		}
+
+		return days;
+	}
+
+	public static int calcTotalDaysHeld(int fromDay, int fromMonth, int fromYear, int toDay, int toMonth, int toYear) {
+		Calendar fromDate = Calendar.getInstance();
+		fromDate.set(fromYear, fromMonth - 1, fromDay);
+		Calendar toDate = Calendar.getInstance();
+		toDate.set(toYear, toMonth - 1, toDay);
+
+		long millisecondsPerDay = 1000 * 60 * 60 * 24;
+		return (int) ((toDate.getTimeInMillis() - fromDate.getTimeInMillis()) / millisecondsPerDay);
+	}
+
+	public static float calcReturnRate(float startPrice, float endPrice, int totalDaysHeld) {
+		float totalReturnRate = (startPrice == -1 || endPrice == -1.0) ? -1 : (100 * (endPrice - startPrice))
+				/ startPrice;
+		float returnRate = (float) Math.pow((1.0 + (totalReturnRate / 100.0)), (1.0 / (totalDaysHeld / 365.0)));
+		returnRate = (returnRate - 1) * 100;
+		return returnRate;
+	}
+
+	public static Date getDateObject(int year, int month, int day) {
+		Calendar c = Calendar.getInstance();
+		c.set(year, month - 1, day, 0, 0, 0);
+		return c.getTime();
+	}
+
+	public static Date getDateObject(String year, String month, String day) {
+		return getDateObject(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
+	}
+
 }

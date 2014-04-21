@@ -1,45 +1,139 @@
-package main;
+package queryTypes;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import responses.CompanyQueryResponseEntry;
+import utilities.Utilities;
+import database.DatabaseManager;
 
-public class DatabaseManager {
+public class CompanyQuery {
 
-	private static final DatabaseManager dbInstance = new DatabaseManager();
-	private static String username = "root";
-	private static String pwd = "pwd";
-	private static String dbLocation = "localhost:3306/FinanceDB";
+	public float startPrice = -1;
+	public float endPrice = -1;
+	public float returnRate = -1;
+	public float high = -1;
+	public float low = -1;
+	public float risk = -1;
 
-	public static final int QUERY = 0;
-	public static final int UPDATE = 1;
+	public static int START_PRICE = 0;
+	public static int END_PRICE = 1;
+	public static int RETURN_RATE = 2;
+	public static int HIGH = 3;
+	public static int LOW = 4;
+	public static int RISK = 5;
 
-	private DatabaseManager() {
-		super();
+	public CompanyQuery() {
+		// Default constructor
 	}
 
-	public static synchronized DatabaseManager getInstance() {
-		return dbInstance;
+	public float getResponseData(int id) {
+		if (id == START_PRICE)
+			return startPrice;
+		else if (id == END_PRICE)
+			return endPrice;
+		else if (id == RETURN_RATE)
+			return returnRate;
+		else if (id == HIGH)
+			return high;
+		else if (id == LOW)
+			return low;
+		else if (id == RISK)
+			return risk;
+		else
+			return -1;
 	}
 
-	protected String companyQuery(String json) throws ClassNotFoundException, SQLException, JSONException {
-		Connection con = DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
+	public void setResponseData(int id, float data) {
+		if (id == START_PRICE)
+			startPrice = data;
+		else if (id == END_PRICE)
+			endPrice = data;
+		else if (id == RETURN_RATE)
+			returnRate = data;
+		else if (id == HIGH)
+			high = data;
+		else if (id == LOW)
+			low = data;
+		else if (id == RISK)
+			risk = data;
+	}
+
+	// Return -1 on error
+	public static Float getQuoteOfCompany(String ticker, int year, int month, int day) {
+		Connection con = null;
+		PreparedStatement query = null;
+		HashMap<String, String[]> response = new HashMap<String, String[]>();
+		int responseSize = 0;
+		float price = -1;
+		try {
+			con = DatabaseManager.getNewConnection();
+			query = con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? AND year=? AND month=? AND day=?");
+			int counter = 0;
+			while (responseSize < 1) {
+				counter++;
+				if (counter == 10) {
+					return -1F;
+				}
+				query.setString(1, ticker);
+				query.setInt(2, year);
+				query.setInt(3, month);
+				query.setInt(4, day);
+				responseSize = DatabaseManager.executeQuery(query, response);
+				if (responseSize < 1) {
+					// Decrement the date by 1 day and try again
+					day--;
+					if (day == 0) {
+						month--;
+						if (month == 0) {
+							month = 12;
+							year--;
+						}
+						day = Utilities.maxDaysInMonth(month);
+					}
+				}
+			}
+			if (responseSize > 0) {
+				String[] prices = response.get("price");
+				price = Float.parseFloat(prices[0]);
+			}
+			return price;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1F;
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			return -1F;
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return -1F;
+		} finally {
+			// Always close SQL connections before returning
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+			if (query != null) {
+				try {
+					query.close();
+				} catch (SQLException ignore) {
+				}
+			}
+		}
+	}
+
+	public static String companyQuery(String json) throws ClassNotFoundException, SQLException, JSONException {
+		Connection con = DatabaseManager.getNewConnection();
+		PreparedStatement query = null;
 		try {
 			JSONObject dataIn = new JSONObject(json);
 			int fromDay = dataIn.getString("fromDate").equals("") ? 1 : Integer.parseInt(dataIn.getString("fromDate")
@@ -58,18 +152,19 @@ public class DatabaseManager {
 			boolean decreasing = dataIn.getBoolean("decreasing");
 
 			// Set up a map to store query responses for processing
-			HashMap<String, CompanyQueryResponseEntry> responseMap = new HashMap<String, CompanyQueryResponseEntry>();
+			HashMap<String, CompanyQuery> responseMap = new HashMap<String, CompanyQuery>();
 
 			// Make sure that the "From Date" is on or after Jan 3rd, 2005, which is the first market day of 2005
-			if (fromYear < 2005 || (fromYear == 2005 && fromMonth < 1)
-					|| (fromYear == 2005 && fromMonth == 1 && fromDay < 3)) {
-				fromYear = 2005;
-				fromMonth = 1;
-				fromDay = 3;
+			if (fromYear < Utilities.EARLIEST_YEAR
+					|| (fromYear == Utilities.EARLIEST_YEAR && fromMonth < Utilities.EARLIEST_MONTH)
+					|| (fromYear == Utilities.EARLIEST_YEAR && fromMonth == Utilities.EARLIEST_MONTH && fromDay < Utilities.EARLIEST_DAY)) {
+				fromYear = Utilities.EARLIEST_YEAR;
+				fromMonth = Utilities.EARLIEST_MONTH;
+				fromDay = Utilities.EARLIEST_DAY;
 			}
 
 			// Get starting prices
-			PreparedStatement query = con
+			query = con
 					.prepareStatement("SELECT ticker, price FROM Quotes WHERE day=? AND month=? AND year=? GROUP BY ticker;");
 			query.setInt(1, fromDay);
 			query.setInt(2, fromMonth);
@@ -79,8 +174,7 @@ public class DatabaseManager {
 			// Deal with the case where the market was closed on the start date
 			int responseSize = 0, counter = 0;
 			while (responseSize == 0) {
-				System.out.println("Query: " + query);
-				responseSize = executeQuery(query, response);
+				responseSize = DatabaseManager.executeQuery(query, response);
 				if (responseSize > 0)
 					continue;
 				counter++;
@@ -96,7 +190,7 @@ public class DatabaseManager {
 						fromMonth = 12;
 						fromYear--;
 					}
-					fromDay = maxDaysInMonth(fromMonth);
+					fromDay = Utilities.maxDaysInMonth(fromMonth);
 				}
 				query.setInt(1, fromDay);
 				query.setInt(2, fromMonth);
@@ -109,13 +203,13 @@ public class DatabaseManager {
 			for (int i = 0; i < responseSize; i++) {
 				String ticker = tickers[i];
 				float startPrice = startPrices[i] != null ? Float.parseFloat(startPrices[i]) : -1;
-				CompanyQueryResponseEntry c;
+				CompanyQuery c;
 				if (responseMap.get(ticker) == null) {
-					c = new CompanyQueryResponseEntry();
+					c = new CompanyQuery();
 				} else {
 					c = responseMap.get(ticker);
 				}
-				c.setAttribute(CompanyQueryResponseEntry.START_PRICE, startPrice);
+				c.setResponseData(CompanyQuery.START_PRICE, startPrice);
 				responseMap.put(ticker, c);
 			}
 
@@ -129,62 +223,54 @@ public class DatabaseManager {
 			query.setInt(5, toMonth);
 			query.setInt(6, toYear);
 			response = new HashMap<String, String[]>();
-			responseSize = executeQuery(query, response);
+			responseSize = DatabaseManager.executeQuery(query, response);
 			tickers = response.get("ticker");
 			String[] endPrices = response.get("price");
 			for (int i = 0; i < responseSize; i++) {
 				// Iterate through DB response, map tickers to response entry objects, fill in start price
 				String ticker = tickers[i];
 				float endPrice = endPrices[i] != null ? Float.parseFloat(endPrices[i]) : -1;
-				CompanyQueryResponseEntry c;
+				CompanyQuery c;
 				if (responseMap.get(ticker) == null) {
-					c = new CompanyQueryResponseEntry();
+					c = new CompanyQuery();
 				} else {
 					c = responseMap.get(ticker);
 				}
-				c.setAttribute(CompanyQueryResponseEntry.END_PRICE, endPrice);
+				c.setResponseData(CompanyQuery.END_PRICE, endPrice);
 				responseMap.put(ticker, c);
 			}
 
 			// Calculate return
+			int totalDaysHeld = Utilities.calcTotalDaysHeld(fromDay, fromMonth, fromYear, toDay, toMonth, toYear);
+			query = con
+					.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year asc, month asc, day asc LIMIT 1;");
 			for (String s : responseMap.keySet()) {
-				CompanyQueryResponseEntry c = responseMap.get(s);
-				float start = c.getAttribute(CompanyQueryResponseEntry.START_PRICE);
+				CompanyQuery c = responseMap.get(s);
+				float start = c.getResponseData(CompanyQuery.START_PRICE);
 				if (start < 0) {
-					// This company did not have a price on the start date. Search to find it's first valid price within the date range
-					query = con
-							.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year asc, month asc, day asc LIMIT 1;");
+					// This company did not have a price on the start date. Search to find it's first valid price within
+					// the date range
+
 					query.setString(1, s);
 					response = new HashMap<String, String[]>();
-					executeQuery(query, response);
+					DatabaseManager.executeQuery(query, response);
 					start = Float.parseFloat(response.get("price")[0]);
-					c.setAttribute(CompanyQueryResponseEntry.START_PRICE, start);
+					c.setResponseData(CompanyQuery.START_PRICE, start);
 				}
-				float end = c.getAttribute(CompanyQueryResponseEntry.END_PRICE);
-				float returnRate = (start == -1 || end == -1.0) ? -1 : (100 * (end - start)) / start;
-				c.setAttribute(CompanyQueryResponseEntry.RETURN_RATE, returnRate);
+				float end = c.getResponseData(CompanyQuery.END_PRICE);
+				float returnRate = Utilities.calcReturnRate(start, end, totalDaysHeld);
+				c.setResponseData(CompanyQuery.RETURN_RATE, returnRate);
 			}
-
-			// Calculate price highs and lows
-			/*
-			 * response = new HashMap<String, String[]>(); for (String s : responseMap.keySet()) { query = con
-			 * .prepareStatement("SELECT ticker, Max(price), Min(price) FROM Quotes WHERE ((year > ? AND year < ?) " +
-			 * "OR ((year=? AND month < ?) OR (year=? AND month > ?)) OR ((year = ? AND month = ? AND day <= ?) " + "OR (year = ? AND month = ? AND day >= ?))) AND ticker=?;"); query.setInt(1,
-			 * fromYear); query.setInt(2, toYear); query.setInt(3, toYear); query.setInt(4, toMonth); query.setInt(5, fromYear); query.setInt(6, fromMonth); query.setInt(7, toYear); query.setInt(8,
-			 * toMonth); query.setInt(9, toDay); query.setInt(10, fromYear); query.setInt(11, fromMonth); query.setInt(12, fromDay); query.setString(13, s); executeQuery(query, response); tickers =
-			 * response.get("ticker"); String[] highs = response.get("Max(price)"); String[] lows = response.get("Min(price)"); CompanyQueryResponseEntry c = responseMap.get(s);
-			 * c.setAttribute(CompanyQueryResponseEntry.HIGH, Float.parseFloat(highs[0])); c.setAttribute(CompanyQueryResponseEntry.LOW, Float.parseFloat(lows[0])); responseMap.put(s, c); }
-			 */
 
 			// Calculate high, low, and risk
 			response = new HashMap<String, String[]>();
 			String[] responseMapKeySet = responseMap.keySet().toArray(new String[responseMap.size()]);
+			query = con
+					.prepareStatement("SELECT price, year FROM Quotes WHERE ((year > ? AND year < ?) "
+							+ "OR ((year=? AND month < ?) OR (year=? AND month > ?)) OR ((year = ? AND month = ? AND day <= ?) "
+							+ "OR (year = ? AND month = ? AND day >= ?))) AND ticker=? ORDER BY year asc, month asc, day asc;");
 			for (String s : responseMapKeySet) {
 				// Query the database for a list of daily prices for the given ticker within the given date range
-				query = con
-						.prepareStatement("SELECT price, year FROM Quotes WHERE ((year > ? AND year < ?) "
-								+ "OR ((year=? AND month < ?) OR (year=? AND month > ?)) OR ((year = ? AND month = ? AND day <= ?) "
-								+ "OR (year = ? AND month = ? AND day >= ?))) AND ticker=? ORDER BY year asc, month asc, day asc;");
 				query.setInt(1, fromYear);
 				query.setInt(2, toYear);
 				query.setInt(3, toYear);
@@ -198,7 +284,7 @@ public class DatabaseManager {
 				query.setInt(11, fromMonth);
 				query.setInt(12, fromDay);
 				query.setString(13, s);
-				responseSize = executeQuery(query, response);
+				responseSize = DatabaseManager.executeQuery(query, response);
 
 				// Iterate through responses. Find the high and low. Calculate risk. Get each year-end price.
 				float high = -1;
@@ -221,12 +307,13 @@ public class DatabaseManager {
 						maxPercentDropFromHigh = ((high - price) / high);
 					}
 					if (currentYear < Integer.parseInt(years[i])) {
-						// If the year of this price is greater than the last price, the last price was the year-end price.
+						// If the year of this price is greater than the last price, the last price was the year-end
+						// price.
 						currentYear = Integer.parseInt(years[i]);
 						annualPrices.add(Float.parseFloat(prices[i - 1]));
 					}
 				}
-				annualPrices.add(Float.parseFloat(prices[responseSize-1])); // Add the last price to the list
+				annualPrices.add(Float.parseFloat(prices[responseSize - 1])); // Add the last price to the list
 				boolean shouldRemove = false;
 				if (increasing) {
 					// The user only wants to see stocks that have increased every year
@@ -256,11 +343,10 @@ public class DatabaseManager {
 				if (shouldRemove) {
 					responseMap.remove(s);
 				} else {
-					System.out.println(s + ": " + annualPrices.toString());
-					CompanyQueryResponseEntry c = responseMap.get(s);
-					c.setAttribute(CompanyQueryResponseEntry.HIGH, high);
-					c.setAttribute(CompanyQueryResponseEntry.LOW, low);
-					c.setAttribute(CompanyQueryResponseEntry.RISK, 100 * (maxPercentDropFromHigh));
+					CompanyQuery c = responseMap.get(s);
+					c.setResponseData(CompanyQuery.HIGH, high);
+					c.setResponseData(CompanyQuery.LOW, low);
+					c.setResponseData(CompanyQuery.RISK, 100 * (maxPercentDropFromHigh));
 				}
 			}
 
@@ -274,7 +360,7 @@ public class DatabaseManager {
 			String[] finalLow = new String[finalTickers.length];
 			String[] finalRisk = new String[finalTickers.length];
 			for (int i = 0; i < finalTickers.length; i++) {
-				CompanyQueryResponseEntry c = responseMap.get(finalTickers[i]);
+				CompanyQuery c = responseMap.get(finalTickers[i]);
 				finalStartPrice[i] = (String.valueOf(c.startPrice).equals("-1.0") ? "--" : String.valueOf(c.startPrice));
 				finalEndPrice[i] = (String.valueOf(c.endPrice).equals("-1.0") ? "--" : String.valueOf(c.endPrice));
 				finalReturnRate[i] = (String.valueOf(c.returnRate).equals("-1.0") ? "--" : String.format("%.02f",
@@ -301,117 +387,13 @@ public class DatabaseManager {
 				} catch (SQLException ignore) {
 				}
 			}
-		}
-	}
-
-	protected String updateQuotes(String json) throws ClassNotFoundException, SQLException, JSONException, IOException {
-		int count = 0;
-
-		// Update the Company table
-		for (String s : Properties.stockList) {
-			count++;
-			String query = "INSERT IGNORE INTO Company (ticker) VALUES (\"" + s + "\");";
-			System.out.println("Insertion " + count + "/" + Properties.stockList.length + ": " + s);
-			System.out.println("Query: " + query);
-			// executeUpdate(query);
-		}
-
-		// Update the Quotes table
-		int i = 0;
-		for (String s : Properties.stockList) {
-			if (s != "GOOGL")
-				continue;
-			try {
-				System.out.println(i + ": Quote for " + s);
-				i++;
-				URL csv = new URL("http://ichart.yahoo.com/table.csv?s=" + s
-						+ "&a=0&b=1&c=2005&d=04&e=13&f=2014&g=d&f=a");
-				BufferedReader in = new BufferedReader(new InputStreamReader(csv.openStream()));
-
-				String inputLine;
-				while ((inputLine = in.readLine()) != null) {
-					// If the line we have is not the heading, parse it and send it as a query to the db
-					Pattern pattern = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
-					Matcher matcher = pattern.matcher(inputLine);
-					if (matcher.find() == true) {
-						int year = Integer.parseInt(inputLine.substring(0, 4));
-						int month = Integer.parseInt(inputLine.substring(5, 7));
-						int day = Integer.parseInt(inputLine.substring(8, 10));
-						String[] input = inputLine.split(",");
-						float price = Float.parseFloat(input[4]);
-						String query = "REPLACE INTO Quotes (ticker, day, month, year, price) VALUES (\"" + s + "\","
-								+ day + "," + month + "," + year + "," + price + ")";
-						// executeUpdate(query);
-					}
-
-				}
-				in.close();
-			} catch (Exception ignore) {
-				// Ignore this exception and finish updating the rest of the quotes
-				ignore.printStackTrace();
-			}
-		}
-		return "{}";
-	}
-
-	protected String executeUpdate(PreparedStatement query) throws ClassNotFoundException, SQLException, JSONException {
-		Class.forName("com.mysql.jdbc.Driver");
-		Connection con = DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
-		try {
-			return String.valueOf(query.executeUpdate());
-		} finally {
-			if (con != null) {
+			if (query != null) {
 				try {
-					con.close();
+					query.close();
 				} catch (SQLException ignore) {
 				}
 			}
 		}
 	}
 
-	protected int executeQuery(PreparedStatement query, HashMap<String, String[]> response)
-			throws ClassNotFoundException, SQLException, JSONException {
-
-		Class.forName("com.mysql.jdbc.Driver");
-		ResultSet rs;
-		rs = query.executeQuery();
-
-		int numCols = rs.getMetaData().getColumnCount();
-		int responseSize = 0;
-		ArrayList<ArrayList<String>> queryResult = new ArrayList<ArrayList<String>>(); // This will have a list entry for each column
-
-		// Initialize the array to hold each column
-		for (int i = 0; i < numCols; i++) {
-			queryResult.add(i, (new ArrayList<String>()));
-		}
-
-		// Fill each array. Every column is held in 1 list
-		rs.absolute(0);
-		while (rs.next()) {
-			responseSize++;
-			for (int i = 1; i <= numCols; i++) {
-				ArrayList<String> col = queryResult.get(i - 1);
-				col.add(rs.getString(i));
-			}
-		}
-
-		// Map each array to its column name, store as JSON Object
-		rs.absolute(0);
-		for (int i = 0; i < numCols; i++) {
-			String[] blank = new String[responseSize];
-			response.put(rs.getMetaData().getColumnName(i + 1), queryResult.get(i).toArray(blank));
-		}
-		return responseSize;
-	}
-
-	private int maxDaysInMonth(int month) {
-		int days = 31; // January, March, May, July, August, October, December
-		if (month == 2) {
-			days = 29; // February (has 29 days on leap years)
-		} else if (month == 4 || month == 6 || month == 9 || month == 11) {
-			days = 30; // April, June, September, November
-		}
-
-		return days;
-	}
 }

@@ -29,7 +29,7 @@ var controller = new function() {
 	var server = {
 		// error handler functions
 		handleAjaxError : function(jqXHR, textStatus, errorThrown, apiMethod) {
-			return ("Communication error: " + jqXHR.responseText);
+			return ("Error: " + jqXHR.status + "(" + jqXHR.statusText+").&nbsp;&nbsp;&nbsp;Method: " + apiMethod);
 		},
 		handleError : function(method, errorcode, message) {
 			return ((method != null ? "Method: " + method + "\n" : "") + (errorcode != null ? "Error Code: " + errorcode + "\n" : "") + (message != null ? "Message: " + message : "No message"));
@@ -86,6 +86,9 @@ var controller = new function() {
 			},
 			fundQuery : function(fundFilter, successCallback, errorCallback) {
 				server.ajaxRequest("GET", "fundQuery", fundFilter, successCallback, errorCallback);
+			}, 
+			addTransaction : function(transactionList, successCallback, errorCallback) {
+				server.ajaxRequest("GET", "addTransaction", transactionList, successCallback, errorCallback);
 			}
 		},
 
