@@ -67,3 +67,12 @@ h1 {
 	{
 	background-color: rgba(50, 20, 150, 0.5);
 }
+
+#addTransactionHelpModal{
+	margin-left: 0em;
+    width: 80%;
+}
+#addTransactionHelpModalDialog{
+    margin-left: -4em;
+    width: 40%;
+}

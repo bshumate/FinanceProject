@@ -29,5 +29,6 @@
 <script type="text/javascript" src="js/index.js"></script>
 <script type="text/javascript" src="js/companyView.js"></script>
 <script type="text/javascript" src="js/fundView.js"></script>
+<script type="text/javascript" src="js/addTransaction.js"></script>
 <script type="text/javascript" src="js/controller.js"></script>
 <script type="text/javascript" src="js/utility.js"></script>

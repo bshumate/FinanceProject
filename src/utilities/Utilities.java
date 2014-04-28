@@ -75,8 +75,8 @@ public class Utilities {
 		return (int) ((toDate.getTimeInMillis() - fromDate.getTimeInMillis()) / millisecondsPerDay);
 	}
 
-	public static float calcReturnRate(float startPrice, float endPrice, int totalDaysHeld) {
-		float totalReturnRate = (startPrice == -1 || endPrice == -1.0) ? -1 : (100 * (endPrice - startPrice))
+	public static float calcAnnualReturnRate(float startPrice, float endPrice, int totalDaysHeld) {
+		float totalReturnRate = (startPrice == -1.0 || endPrice == -1.0) ? -1 : (100 * (endPrice - startPrice))
 				/ startPrice;
 		float returnRate = (float) Math.pow((1.0 + (totalReturnRate / 100.0)), (1.0 / (totalDaysHeld / 365.0)));
 		returnRate = (returnRate - 1) * 100;
@@ -91,6 +91,24 @@ public class Utilities {
 
 	public static Date getDateObject(String year, String month, String day) {
 		return getDateObject(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
+	}
+	
+	public static int getYear(Date date) {
+		Calendar c = Calendar.getInstance();
+		c.setTime(date);
+		return c.get(Calendar.YEAR);
+	}
+	
+	public static int getMonth(Date date) {
+		Calendar c = Calendar.getInstance();
+		c.setTime(date);
+		return c.get(Calendar.MONTH);
+	}
+	
+	public static int getDay(Date date) {
+		Calendar c = Calendar.getInstance();
+		c.setTime(date);
+		return c.get(Calendar.DAY_OF_MONTH);
 	}
 
 }

@@ -25,54 +25,91 @@ var controller = new function() {
 			showAllBut : []
 		};
 	};
+	
+	var NewTransaction = function() {
+		return {
+			transaction : ""
+		};
+	};
 
 	var server = {
 		// error handler functions
 		handleAjaxError : function(jqXHR, textStatus, errorThrown, apiMethod) {
-			return ("Error: " + jqXHR.status + "(" + jqXHR.statusText+").&nbsp;&nbsp;&nbsp;Method: " + apiMethod);
+			return ("Error: " + jqXHR.status + "(" + jqXHR.statusText + ").&nbsp;&nbsp;&nbsp;Method: " + apiMethod);
 		},
 		handleError : function(method, errorcode, message) {
 			return ((method != null ? "Method: " + method + "\n" : "") + (errorcode != null ? "Error Code: " + errorcode + "\n" : "") + (message != null ? "Message: " + message : "No message"));
 		},
 		// ajax request function
 		ajaxRequest : function(requestMethod, apiMethod, data, successCallback, errorCallback) {
-			var requestData = {
-				method : apiMethod
-			};
-			if (data != null) {
-				requestData.json = JSON.stringify(data);
-			} else {
-				requestData.json = "{}";
-			}
-			console.log(requestData);
 
-			$.ajax({
-				url : "FinanceServlet",
-				cache : false,
-				dataType : "json",
-				type : "GET",
-				data : requestData,
-				success : function(data) {
-					console.log(data);
-					if (data != null) {
-						// Check for an error code in the JSON
-						console.log("successful response");
-						console.log(data);
-						successCallback(data);
-					} else {
-						var message = server.handleError(apiMethod, null, apiMethod + " returned no data");
+			if (requestMethod == "POST") {
+				console.log("POST request method");
+				var formData = new FormData(data);
+				$.ajax({
+					url : "FinanceServlet",
+					type : 'POST',
+					data : formData,
+					mimeType : "multipart/form-data",
+					contentType : false,
+					cache : false,
+					processData : false,
+					success : function(data) {
+						if (data != null) {
+							console.log("successful response");
+							console.log(data);
+							successCallback(data);
+						} else {
+							var message = server.handleError(apiMethod, null, apiMethod + " returned no data");
+							if (errorCallback) {
+								errorCallback(message);
+							}
+						}
+					},
+					error : function(jqXHR, textStatus, errorThrown) {
+						if (errorCallback && jqXHR) {
+							errorCallback(jqXHR.responseText);
+						}
+					}
+				});
+			} else {
+				var requestData = {
+					method : apiMethod
+				};
+
+				if (data != null) {
+					requestData.json = JSON.stringify(data);
+				} else {
+					requestData.json = "{}";
+				}
+				console.log(requestData);
+
+				$.ajax({
+					url : "FinanceServlet",
+					dataType : "json",
+					type : requestMethod,
+					data : requestData,
+					cache : false,
+					success : function(data) {
+						if (data != null) {
+							console.log("successful response");
+							console.log(data);
+							successCallback(data);
+						} else {
+							var message = server.handleError(apiMethod, null, apiMethod + " returned no data");
+							if (errorCallback) {
+								errorCallback(message);
+							}
+						}
+					},
+					error : function(jqXHR, textStatus, errorThrown) {
+						var message = server.handleAjaxError(jqXHR, textStatus, errorThrown, apiMethod);
 						if (errorCallback) {
 							errorCallback(message);
 						}
 					}
-				},
-				error : function(jqXHR, textStatus, errorThrown) {
-					var message = server.handleAjaxError(jqXHR, textStatus, errorThrown, apiMethod);
-					if (errorCallback) {
-						errorCallback(message);
-					}
-				}
-			});
+				});
+			}
 		}
 	};
 
@@ -86,9 +123,12 @@ var controller = new function() {
 			},
 			fundQuery : function(fundFilter, successCallback, errorCallback) {
 				server.ajaxRequest("GET", "fundQuery", fundFilter, successCallback, errorCallback);
-			}, 
-			addTransaction : function(transactionList, successCallback, errorCallback) {
-				server.ajaxRequest("GET", "addTransaction", transactionList, successCallback, errorCallback);
+			},
+			addTransaction : function(transaction, successCallback, errorCallback) {
+				server.ajaxRequest("GET", "addTransaction", transaction, successCallback, errorCallback);
+			},
+			uploadTransactionFile : function(postData, successCallback, errorCallback) {
+				server.ajaxRequest("POST", "uploadTransactionFile", postData, successCallback, errorCallback);
 			}
 		},
 
@@ -99,6 +139,10 @@ var controller = new function() {
 			fundFilter : function() {
 				return new FundFilter();
 			}
+		},
+		
+		newTransaction : function() {
+			return new NewTransaction();
 		}
 	};
 

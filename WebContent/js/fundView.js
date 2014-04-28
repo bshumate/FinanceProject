@@ -1,7 +1,26 @@
+var g_fundName = [];
+var g_fundType = [];
+var g_fundStartWorth = [];
+var g_fundEndWorth = [];
+var g_fundReturnRate = [];
+var g_fundCash = [];
+var g_fundInvestments = [];
+
 function fundViewInit() {
 	$("#fundSubmitButton").click(function() {
 		fundQuery();
 	});
+
+	$("#fundExportToCSV").click(
+		function() {
+			console.log("Fund export to CSV clicked.");
+			var stringToCSV = "Name, Type, Starting Worth ($), Ending Worth ($), Return/Yr (%), Cash ($), Investments ($)\n";
+			for (var i = 0; i < g_fundName.length; i++) {
+				stringToCSV += (g_fundName[i] + ", " + g_fundType[i] + ", " + g_fundStartWorth[i] + ", " + g_fundEndWorth[i] + ", " + g_fundReturnRate[i] + ", " + g_fundCash[i] + ", "
+					+ g_fundInvestments[i] + "\n");
+			}
+			download("fundView.csv", stringToCSV);
+		});
 
 	$("#fundAlertSuccessButton").click(function(e) {
 		$("#fundAlertSuccess").hide();
@@ -60,26 +79,30 @@ function fundQuery() {
 
 	var message = "";
 	var successCallback = function(data) {
-
-		console.log("Success!");
-		console.log(data);
-
-		if (data['name'] == null || data['startWorth'] == null || data['endWorth'] == null || data['returnRate'] == null || data['cash'] == null || data['investments'] == null || data['type'] == null) {
+		if (data['name'] == null || data['type'] == null || data['startWorth'] == null || data['endWorth'] == null || data['returnRate'] == null || data['cash'] == null || data['investments'] == null) {
 			errorCallback("Error: Server response was missing necessary data.");
 			return;
 		}
-		for(var i = 0; i < data['type'].length; i++) {
-			if(data['type'][i] == 'I')
-				data['type'][i] = 'Individual';
-			else if(data['type'][i] == 'P')
-				data['type'][i] = 'Portfolio';
+
+		g_fundName = data['name'];
+		g_fundType = data['type'];
+		g_fundStartWorth = data['startWorth'];
+		g_fundEndWorth = data['endWorth'];
+		g_fundReturnRate = data['returnRate'];
+		g_fundCash = data['cash'];
+		g_fundInvestments = data['investments'];
+
+		for (var i = 0; i < g_fundType.length; i++) {
+			if (g_fundType[i] == 'I')
+				g_fundType[i] = 'Individual';
+			else if (g_fundType[i] == 'P')
+				g_fundType[i] = 'Portfolio';
 		}
-		data['dummy'] = 0;
 		var tableUpdate = '';
 		var i = 0;
-		for (var i = 0; i < data['name'].length; i++) {
-			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td>" + data['name'][i] + "</td><td>" + data['startWorth'][i] + "</td><td>" + data['endWorth'][i] + "</td><td>" + data['returnRate'][i] + "%</td><td>"
-				+ data['cash'][i] + "</td><td>" + data['investments'][i] + "</td><td>" + data['type'][i] + "</td></tr>");
+		for (var i = 0; i < g_fundName.length; i++) {
+			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td>" + g_fundName[i] + "</td><td>" + g_fundType[i] + "</td><td>" + g_fundStartWorth[i] + "</td><td>" + g_fundEndWorth[i] + "</td><td>"
+				+ g_fundReturnRate[i] + "%</td><td>" + g_fundCash[i] + "</td><td>" + g_fundInvestments[i] + "</td></tr>");
 		}
 		$("#fund-table-body").empty().append(tableUpdate);
 		$("#fundAlertSuccess").show();

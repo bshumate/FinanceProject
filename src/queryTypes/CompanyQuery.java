@@ -258,7 +258,7 @@ public class CompanyQuery {
 					c.setResponseData(CompanyQuery.START_PRICE, start);
 				}
 				float end = c.getResponseData(CompanyQuery.END_PRICE);
-				float returnRate = Utilities.calcReturnRate(start, end, totalDaysHeld);
+				float returnRate = Utilities.calcAnnualReturnRate(start, end, totalDaysHeld);
 				c.setResponseData(CompanyQuery.RETURN_RATE, returnRate);
 			}
 

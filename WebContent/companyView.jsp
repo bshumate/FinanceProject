@@ -1,6 +1,7 @@
 <div class="container">
 	<div class="row">
-		<div style="background-color:rgba(240,250,255,.8);" class="col-md-8 col-md-offset-2 panel panel-default">
+		<div style="background-color: rgba(240, 250, 255, .8);"
+			class="col-md-8 col-md-offset-2 panel panel-default">
 
 			<h2 class="margin-base-vertical">Company Information</h2>
 
@@ -20,30 +21,38 @@
 
 				<div class="radio">
 					<label> <input type="radio" name="companyOptionsRadios"
-						id="companyOptionDisplayAll" value="1" checked=true> Display all results
+						id="companyOptionDisplayAll" value="1" checked=true>
+						Display all results
 					</label>
 				</div>
 				<div class="radio">
 					<label> <input type="radio" name="companyOptionsRadios"
-						id="companyOptionDisplayOnly" value="2" disabled="true"> Display
-						only:&nbsp;&nbsp;<input type="text"
-						placeholder="AAPL,GOOG,MSFT ...">
+						id="companyOptionDisplayOnly" value="2" disabled="true">
+						Display only:&nbsp;&nbsp;<input type="text"
+						placeholder="GOOGL,MSFT, UA ...">
 					</label>
 				</div>
 				<div class="radio">
 					<label> <input type="radio" name="companyOptionsRadios"
-						id="companyOptionDisplayAllBut" value="3" disabled="true"> Display all
-						but:&nbsp;&nbsp;<input type="text"
-						placeholder="AAPL,GOOG,MSFT ...">
+						id="companyOptionDisplayAllBut" value="3" disabled="true">
+						Display all but:&nbsp;&nbsp;<input type="text"
+						placeholder="GOOGL,MSFT ...">
 					</label>
 				</div>
 				<div class="submit">
 					<button id="companySubmitButton" type="button"
 						class="btn btn-primary">
-						Refresh Company Info&nbsp;&nbsp;<i class="glyphicon glyphicon-refresh"></i>
+						Refresh Company Info&nbsp;&nbsp;<i
+							class="glyphicon glyphicon-refresh"></i>
 					</button>
-					<button id="quotesSubmitButton" type="button" class="btn btn-info" disabled=true>
-						Update Daily Quotes&nbsp;&nbsp;<i class="glyphicon glyphicon-refresh"></i>
+					<button id="companyExportToCSV" type="button" class="btn btn-default">
+						<b>Export Company Table to CSV&nbsp;&nbsp;</b><i
+							class="glyphicon glyphicon-download-alt"></i>
+					</button>
+					<button id="quotesSubmitButton" type="button" class="btn btn-info"
+						disabled=true>
+						Update Daily Quotes&nbsp;&nbsp;<i
+							class="glyphicon glyphicon-refresh"></i>
 					</button>
 				</div>
 			</div>
@@ -55,7 +64,8 @@
 			<div class="alert alert-danger fade in" id="companyAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em">
 				<button id="companyAlertErrorButton" type="button" class="close">×</button>
-				<span id="companyAlertErrorText">Error processing company query.</span>
+				<span id="companyAlertErrorText">Error processing company
+					query.</span>
 			</div>
 			<div class="alert alert-success fade in" id="quotesAlertSuccess"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em;">

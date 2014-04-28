@@ -78,13 +78,10 @@ public class FundQuery {
 					.substring(0, 2));
 			int toYear = dataIn.getString("toDate").equals("") ? 2013 : Integer.parseInt(dataIn.getString("toDate")
 					.substring(6, 10));
-			boolean increasing = dataIn.getBoolean("increasing");
-			boolean decreasing = dataIn.getBoolean("decreasing");
+			// boolean increasing = dataIn.getBoolean("increasing");
+			// boolean decreasing = dataIn.getBoolean("decreasing");
 			boolean individual = dataIn.getBoolean("individual");
 			boolean portfolio = dataIn.getBoolean("portfolio");
-
-			// Set up a map to store query responses for processing
-			HashMap<String, FundQuery> responseMap = new HashMap<String, FundQuery>();
 
 			// Make sure that the "From Date" is on or after Jan 3rd, 2005, which is the first market day of 2005
 			if (fromYear < Utilities.EARLIEST_YEAR
@@ -106,12 +103,12 @@ public class FundQuery {
 			HashMap<String, String[]> response = new HashMap<String, String[]>();
 			int responseSize = 0;
 			responseSize = DatabaseManager.executeQuery(query, response);
-			
+
 			// Iterate through the response, create a mapping from fund name to fund type(i.e., "I" or "P")
 			HashMap<String, String> fundNameToFundType = new HashMap<String, String>();
 			String[] fundNames = response.get("name");
 			String[] fundTypes = response.get("type");
-			for(int i = 0; i < responseSize; i++) {
+			for (int i = 0; i < responseSize; i++) {
 				fundNameToFundType.put(fundNames[i], fundTypes[i]);
 			}
 
@@ -122,17 +119,19 @@ public class FundQuery {
 				// Get all transactions where the fund name matches the current fund name
 				String fundToProcess = fundsToCalculate.pollFirst();
 				System.out.println("next fund: " + fundToProcess + " size of list: " + fundsToCalculate.size());
-				query = con.prepareStatement("SELECT * FROM Activity WHERE name=? OR security=? ORDER BY year ASC, month ASC, day ASC");
+				query = con
+						.prepareStatement("SELECT * FROM Activity WHERE name=? OR security=? ORDER BY year ASC, month ASC, day ASC");
 				query.setString(1, fundToProcess);
 				query.setString(2, fundToProcess);
 				responseSize = DatabaseManager.executeQuery(query, response);
 				if (responseSize < 1) {
-					throw new SQLException(
-							"Database constraint violated. Fund can't exist without being created first.");
+					// There are no transactions associated with this fund
+					continue;
 				}
 
 				// If any of these transactions contain a bought/sold security that hasn't yet been processed, put this
 				// at the back of the list
+				boolean skipThisSecurity = false;
 				for (String securityToCheck : Arrays.asList(response.get("security"))) {
 					if (!securityToCheck.equals(fundToProcess) && !fundWorths.containsKey(securityToCheck)
 							&& !Utilities.isCompany(securityToCheck)) {
@@ -141,9 +140,13 @@ public class FundQuery {
 																		// processed
 						}
 						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
-						// processed later
-						continue;
+																	// processed later
+						skipThisSecurity = true;
+						break;
 					}
+				}
+				if (skipThisSecurity) {
+					continue;
 				}
 
 				// Process transactions - build a FundWorth object for this fund during processing
@@ -154,11 +157,11 @@ public class FundQuery {
 				String[] months = response.get("month");
 				String[] days = response.get("day");
 				String[] amounts = response.get("amount");
-				System.out.println("Date: " + Utilities.getDateObject(2012, 12, 12));
 
 				for (int i = 0; i < responseSize; i++) {
 					Date transactionDate = Utilities.getDateObject(years[i], months[i], days[i]);
-					System.out.println("Transaction: " + types[i] + " name: " + names[i] + " securities: " + securities[i]);
+					// System.out.println("Transaction: " + types[i] + "\tname: " + names[i] + "\tsecurities: " +
+					// securities[i]);
 					if (types[i].equals("C")) {
 						// If this fund does not exist, create it with the initial cash amount
 						if (fundWorths.get(fundToProcess) == null) {
@@ -167,7 +170,7 @@ public class FundQuery {
 						}
 						// If this fund already exists, simply add cash to it
 						else {
-							FundWorth fw = fundWorths.get(fundToProcess);
+							// FundWorth fw = fundWorths.get(fundToProcess);
 						}
 					} else if (types[i].equals("B")) {
 						// Check to see if the buy transaction is this fund buying into a different security
@@ -178,7 +181,7 @@ public class FundQuery {
 						// Check to see if the buy transaction is someone else buying into this fund
 						else if (securities[i].equals(fundToProcess) && !names[i].equals(fundToProcess)) {
 							FundWorth fw = fundWorths.get(fundToProcess);
-							fw.stakeHolderBuy(securities[i], Float.parseFloat(amounts[i]), transactionDate);
+							fw.shareHolderBuy(names[i], Float.parseFloat(amounts[i]), transactionDate);
 						}
 						// If this buy transaction is a fund buying into itself, or does not involve the current fund at
 						// all, there is an error
@@ -195,7 +198,7 @@ public class FundQuery {
 						// Check to see if the sell transaction is someone else selling this fund
 						else if (securities[i].equals(fundToProcess) && !names[i].equals(fundToProcess)) {
 							FundWorth fw = fundWorths.get(fundToProcess);
-							fw.stakeHolderSell(securities[i], transactionDate);
+							fw.shareHolderSell(names[i], transactionDate);
 						}
 						// If this sell transaction is a fund selling itself, or does not involve the current fund at
 						// all, there is an error
@@ -209,29 +212,48 @@ public class FundQuery {
 						throw new SQLException("Database constraint violated. Type must be C, B, or S.");
 					}
 				}
-				//fundWorths.put(fundToProcess, null);
+				// fundWorths.put(fundToProcess, null);
 			}
-			
+
+			// Calculate the final set of funds to be sent to the client.
+			// This set of funds should be all funds selected at the beginning, intersected with the funds for which a
+			// FundWorth object was created
+			ArrayList<String> finalFundList = new ArrayList<String>();
+			for(String s : fundNameToFundType.keySet()) {
+				if (fundWorths.containsKey(s)) {
+					finalFundList.add(s);
+				}
+			}
+
 			// Format JSON response. Build string arrays to store into the response
 			JSONObject queryResult = new JSONObject();
-			String[] name = new String[fundWorths.size()];
-			String[] startWorth = new String[fundWorths.size()];
-			String[] endWorth = new String[fundWorths.size()];
-			String[] returnRate = new String[fundWorths.size()];
-			String[] cash = new String[fundWorths.size()];
-			String[] investments = new String[fundWorths.size()];
-			String[] type = new String[fundWorths.size()];
+			String[] name = new String[finalFundList.size()];
+			String[] startWorth = new String[finalFundList.size()];
+			String[] endWorth = new String[finalFundList.size()];
+			String[] returnRate = new String[finalFundList.size()];
+			String[] cash = new String[finalFundList.size()];
+			String[] investments = new String[finalFundList.size()];
+			String[] type = new String[finalFundList.size()];
 			int i = 0;
-			for (String s : fundWorths.keySet()) {
-				FundWorth fw = fundWorths.get(s); 
-				name[i] = s;
-				startWorth[i] = String.valueOf(fw.getInitialFundWorth());
-				endWorth[i] = String.valueOf(fw.getLastQuote().getNetWorth());
-				returnRate[i] = "-1";
-				cash[i] = String.valueOf(fw.getLastQuote().getCashAmount());
-				investments[i] = String.valueOf(fw.getLastQuote().getInvestmentAmount());
-				type[i] = fundNameToFundType.get(s);
-				i++;
+			for (String s : finalFundList) {
+				// Only print out the security if it was processed/didn't have 0 associated transactions
+				if (fundWorths.containsKey(s)) {
+					FundWorth fw = fundWorths.get(s);
+					System.out.println(fw.toString());
+					name[i] = s;
+					startWorth[i] = String.format("%.02f", fw.getInitialFundWorth());
+					endWorth[i] = String.format("%.02f", fw.getFundQuoteForDay(toYear, toMonth, toDay).getNetWorth());
+					returnRate[i] = String.format(
+							"%.02f",
+							100 * FundWorth.calcFundPercentReturn(s, s,
+									Utilities.getDateObject(fromYear, fromMonth, fromDay),
+									Utilities.getDateObject(toYear, toMonth, toDay)));
+					cash[i] = String.format("%.02f", fw.getFundQuoteForDay(toYear, toMonth, toDay).getCashAmount());
+					investments[i] = String.format("%.02f", fw.getFundQuoteForDay(toYear, toMonth, toDay)
+							.getInvestmentAmount());
+					type[i] = fundNameToFundType.get(s);
+					i++;
+				}
 			}
 			queryResult.put("name", name);
 			queryResult.put("startWorth", startWorth);
@@ -240,8 +262,11 @@ public class FundQuery {
 			queryResult.put("cash", cash);
 			queryResult.put("investments", investments);
 			queryResult.put("type", type);
+
 			return queryResult.toString();
 		} finally {
+			FundWorth.clearFundWorthSet(); // Done processing - remove this set of FundWorth objects
+
 			// Always close SQL connections before returning
 			if (con != null) {
 				try {

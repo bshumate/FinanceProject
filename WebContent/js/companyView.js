@@ -1,3 +1,11 @@
+var g_companySymbol = [];
+var g_companyStartPrice = [];
+var g_companyEndPrice = [];
+var g_companyReturnRate = [];
+var g_companyHigh = [];
+var g_companyLow = [];
+var g_companyRisk = [];
+
 function companyViewInit() {
 	$("#companySubmitButton").click(function() {
 		companyQuery();
@@ -6,6 +14,18 @@ function companyViewInit() {
 	$("#quotesSubmitButton").click(function() {
 		updateQuotes();
 	});
+	
+	$("#companyExportToCSV").click(
+		function() {
+			console.log("Company export to CSV clicked.");
+			var stringToCSV = "Symbol, Starting Price ($), Ending Price ($), Return/Yr (%), High ($), Low ($), Risk (%)\n";
+			for (var i = 0; i < g_companySymbol.length; i++) {
+				stringToCSV += (g_companySymbol[i] + ", " + g_companyStartPrice[i] + ", " + g_companyEndPrice[i] + ", " + g_companyReturnRate[i] + ", " + g_companyHigh[i] + ", "
+					+ g_companyLow[i] + ", " + g_companyRisk[i] + "\n");
+			}
+			download("companyView.csv", stringToCSV);
+		});
+	
 	$("#companyAlertSuccessButton").click(function(e) {
 		$("#companyAlertSuccess").hide();
 	});
@@ -58,19 +78,25 @@ function companyQuery() {
 
 	var message = "";
 	var successCallback = function(data) {
-
-		console.log("Success!");
-		console.log(data);
 		if (data['symbol'] == null || data['startPrice'] == null || data['endPrice'] == null || data['returnRate'] == null || data['high'] == null || data['low'] == null || data['risk'] == null) {
 			errorCallback("Error: Server response was missing necessary data.");
 			return;
 		}
+		
+		g_companySymbol = data['symbol'];
+		g_companyStartPrice = data['startPrice'];
+		g_companyEndPrice = data['endPrice'];
+		g_companyReturnRate = data['returnRate'];
+		g_companyHigh = data['high'];
+		g_companyLow = data['low'];
+		g_companyRisk = data['risk'];
+		
 		var tableUpdate = '';
 		var i = 0;
 		for (var i = 0; i < data['symbol'].length; i++) {
-			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td><a href=\"http://finance.yahoo.com/q?s=" + data['symbol'][i] + "\" target=\"_blank\">" + data['symbol'][i] + "</a></td><td>"
-				+ data['startPrice'][i] + "</td><td>" + data['endPrice'][i] + "</td><td>" + data['returnRate'][i] + "%</td><td>" + data['high'][i] + "</td><td>" + data['low'][i] + "</td><td>"
-				+ data['risk'][i] + "%</td></tr>");
+			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td><a href=\"http://finance.yahoo.com/q?s=" + g_companySymbol[i] + "\" target=\"_blank\">" + g_companySymbol[i] + "</a></td><td>"
+				+ g_companyStartPrice[i] + "</td><td>" + g_companyEndPrice[i] + "</td><td>" + g_companyReturnRate[i] + "%</td><td>" + g_companyHigh[i] + "</td><td>" + g_companyLow[i] + "</td><td>"
+				+ g_companyRisk[i] + "%</td></tr>");
 		}
 		$("#company-table-body").empty().append(tableUpdate);
 		$("#companyAlertSuccess").show();
