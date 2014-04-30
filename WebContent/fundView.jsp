@@ -1,16 +1,16 @@
 <div class="container">
 	<div class="row">
 		<div style="background-color: rgba(255, 247, 255, .8)"
-			class="col-md-9 col-md-offset-2 panel panel-default">
+			class="col-md-11 col-md-offset-1 panel panel-default">
 
 			<h2 class="margin-base-vertical">Fund Information</h2>
 
 			<div class="myForm">
 				<div class="dateRange">
 					<label for="fundFromDate">From:&nbsp;</label><input
-						id="fundFromDate" type="text" placeholder="01/01/2005" disabled=true> <label
-						for="fundToDate">To:&nbsp;</label><input id="fundToDate"
-						type="text" placeholder="12/31/2013" disabled=true>
+						id="fundFromDate" type="text" placeholder="01/01/2005"
+						disabled=true> <label for="fundToDate">To:&nbsp;</label><input
+						id="fundToDate" type="text" placeholder="12/31/2013" disabled=true>
 				</div>
 
 				<div style="margin-top: .5em">
@@ -69,21 +69,23 @@
 			<div class="alert alert-danger fade in" id="fundAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em">
 				<button id="fundAlertErrorButton" type="button" class="close">×</button>
-				<span id="fundAlertErrorText">Error processing fund query.</span>
+				<span id="fundAlertErrorText" style="white-space: pre">Error
+					processing fund query.</span>
 			</div>
 			<div id="fund-table-div" style="margin-top: 1em">
 				<table id="fund-table"
 					class="table table-bordered table-hover tablesorter">
 					<thead id="fund-table-heading">
 						<tr>
-							<th class="col0 column column-active">#</th>
+							<th class="col0 column">#</th>
 							<th class="col1 column">Name</th>
 							<th class="col2 column">Type</th>
 							<th class="col3 column">Starting Worth ($)</th>
-							<th class="col4 column">Ending Worth ($)</th>
+							<th class="col4 column column-active">Ending Worth ($)</th>
 							<th class="col5 column">Return/Yr (%)</th>
 							<th class="col6 column">Cash ($)</th>
 							<th class="col7 column">Investments ($)</th>
+							<th class="col8 column">Majority Participant In</th>
 						</tr>
 					</thead>
 					<tbody id="fund-table-body">

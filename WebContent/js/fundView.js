@@ -5,6 +5,7 @@ var g_fundEndWorth = [];
 var g_fundReturnRate = [];
 var g_fundCash = [];
 var g_fundInvestments = [];
+var g_majorityParticipant = [];
 
 function fundViewInit() {
 	$("#fundSubmitButton").click(function() {
@@ -14,10 +15,10 @@ function fundViewInit() {
 	$("#fundExportToCSV").click(
 		function() {
 			console.log("Fund export to CSV clicked.");
-			var stringToCSV = "Name, Type, Starting Worth ($), Ending Worth ($), Return/Yr (%), Cash ($), Investments ($)\n";
+			var stringToCSV = "Name, Type, Starting Worth ($), Ending Worth ($), Return/Yr (%), Cash ($), Investments ($), Majority Participant In\n";
 			for (var i = 0; i < g_fundName.length; i++) {
 				stringToCSV += (g_fundName[i] + ", " + g_fundType[i] + ", " + g_fundStartWorth[i] + ", " + g_fundEndWorth[i] + ", " + g_fundReturnRate[i] + ", " + g_fundCash[i] + ", "
-					+ g_fundInvestments[i] + "\n");
+					+ g_fundInvestments[i] + ", " + g_majorityParticipant[i] + "\n");
 			}
 			download("fundView.csv", stringToCSV);
 		});
@@ -91,7 +92,20 @@ function fundQuery() {
 		g_fundReturnRate = data['returnRate'];
 		g_fundCash = data['cash'];
 		g_fundInvestments = data['investments'];
-
+		g_majorityParticipant = data['majorityParticipant'];
+		
+		var deepCopyEndWorth = $.extend(true, [], g_fundEndWorth);
+		for (var i = 0; i < deepCopyEndWorth.length; i++) {
+			deepCopyEndWorth[i] = parseFloat(deepCopyEndWorth[i]);
+		}
+		deepCopyEndWorth.sort(function(a,b) { return a - b;}).reverse();
+		var rankingOfNetWorths = [];
+		for (var i = 0; i < deepCopyEndWorth.length; i++) {
+			rankingOfNetWorths[i] = deepCopyEndWorth[i];
+		}
+		
+		console.log(rankingOfNetWorths);
+		
 		for (var i = 0; i < g_fundType.length; i++) {
 			if (g_fundType[i] == 'I')
 				g_fundType[i] = 'Individual';
@@ -101,15 +115,15 @@ function fundQuery() {
 		var tableUpdate = '';
 		var i = 0;
 		for (var i = 0; i < g_fundName.length; i++) {
-			tableUpdate += ("<tr><td>" + (i + 1) + "</td><td>" + g_fundName[i] + "</td><td>" + g_fundType[i] + "</td><td>" + g_fundStartWorth[i] + "</td><td>" + g_fundEndWorth[i] + "</td><td>"
-				+ g_fundReturnRate[i] + "%</td><td>" + g_fundCash[i] + "</td><td>" + g_fundInvestments[i] + "</td></tr>");
+			tableUpdate += ("<tr><td>" + ((rankingOfNetWorths.indexOf(parseFloat(g_fundEndWorth[i])))+1) + "</td><td>" + g_fundName[i] + "</td><td>" + g_fundType[i] + "</td><td>" + g_fundStartWorth[i] + "</td><td>" + g_fundEndWorth[i] + "</td><td>"
+				+ g_fundReturnRate[i] + "%</td><td>" + g_fundCash[i] + "</td><td>" + g_fundInvestments[i] + "</td><td>" + g_majorityParticipant[i] + "</td></tr>");
 		}
 		$("#fund-table-body").empty().append(tableUpdate);
 		$("#fundAlertSuccess").show();
 
-		// Tell tablesorter plugin to update the table, sort on the 1st column
+		// Tell tablesorter plugin to update the table, sort on the End Worth column in descending order
 		$("#fund-table").trigger("update");
-		$("#fund-table thead").find("th:eq(0)").trigger("sorton", [ [ [ 0, 0 ] ] ]);
+		$("#fund-table thead").find("th:eq(4)").trigger("sorton", [ [ [ 4, 1 ] ] ]);
 
 	};
 	var errorCallback = function(errorMessage) {

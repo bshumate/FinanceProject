@@ -83,7 +83,10 @@ public class FundDailyQuote {
 	}
 
 	public void addCash(float cashAdded) {
+		float oldNetWorth = this.getNetWorth();
 		cashAmount += cashAdded;
+		float newNetWorth = this.getNetWorth();
+		updateCurrentShareholdersStake(oldNetWorth, newNetWorth);
 	}
 
 	public void fundBuy(String name, Float dollarAmount) {
@@ -126,32 +129,32 @@ public class FundDailyQuote {
 		// Someone is investing in this fund. Split up their investment amount according to the current allocation. This
 		// will involve getting the most recent price quotes for each stock owned. Additional stock purchases will be
 		// treated as if an entirely new set of shares is bought for a single price on this day.
-		float netWorth = this.getNetWorth();
-		float newCashAmount = this.cashAmount + (dollarAmount * (this.cashAmount / netWorth));
+		float oldNetWorth = this.getNetWorth();
+		float newCashAmount = this.cashAmount + (dollarAmount * (this.cashAmount / oldNetWorth));
 		for (String s : numSharesPerSecurity.keySet()) {
 			float quote = CompanyQuery.getQuoteOfCompany(s, year, month, day);
 			float dollarAmountForS = quote * numSharesPerSecurity.get(s);
-			float additionalDollarAmountForS = dollarAmount * (dollarAmountForS / netWorth);
+			float additionalDollarAmountForS = dollarAmount * (dollarAmountForS / oldNetWorth);
 			//this.fundSell(s, FundWorth.getDayFundBought(this.fundDailyQuoteSecurityName, s));
 			this.fundBuy(s, (dollarAmountForS + additionalDollarAmountForS));
 			FundWorth.updateDayFundBought(this.fundDailyQuoteSecurityName, s, Utilities.getDateObject(day, month, day));
 		}
 		this.cashAmount = newCashAmount; // Reset the cash
 		float newNetWorth = this.getNetWorth();
-		updateCurrentShareholdersStake(netWorth, newNetWorth);
+		updateCurrentShareholdersStake(oldNetWorth, newNetWorth);
 		this.shareHolders.put(shareHolderName, (dollarAmount/newNetWorth));
 	}
 
 	public void shareHolderSell(String shareHolderName) {
 		// Someone is selling out of this fund. Sell out of each currently owned fund by a percentage equivalent to the
 		// amount removed from the fund.
-		float netWorth = this.getNetWorth();
-		float amountSoldFromFund = this.shareHolders.get(shareHolderName) * netWorth;
-		float newCashAmount = this.cashAmount - (amountSoldFromFund * (this.cashAmount / netWorth));
+		float oldNetWorth = this.getNetWorth();
+		float amountSoldFromFund = this.shareHolders.get(shareHolderName) * oldNetWorth;
+		float newCashAmount = this.cashAmount - (amountSoldFromFund * (this.cashAmount / oldNetWorth));
 		for (String s : numSharesPerSecurity.keySet()) {
 			float quote = CompanyQuery.getQuoteOfCompany(s, year, month, day);
 			float dollarAmountForS = quote * numSharesPerSecurity.get(s);
-			float lessDollarAmountForS = amountSoldFromFund * (dollarAmountForS / netWorth);
+			float lessDollarAmountForS = amountSoldFromFund * (dollarAmountForS / oldNetWorth);
 			//this.fundSell(s, FundWorth.getDayFundBought(this.fundDailyQuoteSecurityName, s));
 			this.fundBuy(s, (dollarAmountForS - lessDollarAmountForS));
 			FundWorth.updateDayFundBought(this.fundDailyQuoteSecurityName, s, Utilities.getDateObject(year, month, day));
@@ -159,7 +162,7 @@ public class FundDailyQuote {
 		this.cashAmount = newCashAmount;
 		float newNetWorth = this.getNetWorth();
 		this.shareHolders.remove(shareHolderName);
-		updateCurrentShareholdersStake(netWorth, newNetWorth);
+		updateCurrentShareholdersStake(oldNetWorth, newNetWorth);
 		
 	}
 
@@ -173,6 +176,19 @@ public class FundDailyQuote {
 		}
 	}
 
+	public String getMajorityParticipant() {
+		String majority = "";
+		float maxShare = 0;
+		for (String s : this.shareHolders.keySet()) {
+			Float shareForS = this.shareHolders.get(s);
+			if (shareForS != null && shareForS > maxShare) {
+				maxShare = shareForS;
+				majority = s;
+			}
+		}
+		return majority;
+	}
+	
 	public float getTotalShareHolderStake() {
 		float totalStake = 0;
 		for (Float f : shareHolders.values()) {

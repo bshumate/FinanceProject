@@ -45,7 +45,8 @@
 						Refresh Company Info&nbsp;&nbsp;<i
 							class="glyphicon glyphicon-refresh"></i>
 					</button>
-					<button id="companyExportToCSV" type="button" class="btn btn-default">
+					<button id="companyExportToCSV" type="button"
+						class="btn btn-default">
 						<b>Export Company Table to CSV&nbsp;&nbsp;</b><i
 							class="glyphicon glyphicon-download-alt"></i>
 					</button>
@@ -64,8 +65,8 @@
 			<div class="alert alert-danger fade in" id="companyAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em">
 				<button id="companyAlertErrorButton" type="button" class="close">×</button>
-				<span id="companyAlertErrorText">Error processing company
-					query.</span>
+				<span id="companyAlertErrorText" style="white-space: pre">Error
+					processing company query.</span>
 			</div>
 			<div class="alert alert-success fade in" id="quotesAlertSuccess"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em;">
@@ -75,7 +76,8 @@
 			<div class="alert alert-danger fade in" id="quotesAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em">
 				<button id="quotesAlertErrorButton" type="button" class="close">×</button>
-				<span id="quotesAlertErrorText">Error updating quotes.</span>
+				<span id="quotesAlertErrorText" style="white-space: pre">Error
+					updating quotes.</span>
 			</div>
 			<div id="company-table-div" style="margin-top: 1em">
 				<table id="company-table"

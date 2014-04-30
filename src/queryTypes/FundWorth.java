@@ -11,6 +11,7 @@ public class FundWorth {
 
 	private String name;
 	private float initialFundWorth;
+	private float totalAdditionalCashAdded;
 	private TreeMap<Date, FundDailyQuote> fundDailyQuotes;
 	private HashMap<String, Date> dayFundBought;
 
@@ -29,6 +30,7 @@ public class FundWorth {
 	public FundWorth(String name, Date date, float initialCashAmount) {
 		this.name = name;
 		this.initialFundWorth = initialCashAmount;
+		this.totalAdditionalCashAdded = 0;
 		this.fundDailyQuotes = new TreeMap<Date, FundDailyQuote>();
 		this.dayFundBought = new HashMap<String, Date>();
 
@@ -68,6 +70,15 @@ public class FundWorth {
 		return quoteToReturn;
 	}
 
+	public void addCash(Float dollarAmount, Date date) {
+		FundDailyQuote quote = fundDailyQuotes.get(date);
+		if (quote == null) {
+			quote = addFundDailyQuote(date);
+		}
+		quote.addCash(dollarAmount);
+		this.totalAdditionalCashAdded += dollarAmount;
+	}
+
 	public void fundBuyFund(String purchasedName, Float dollarAmount, Date date) {
 		System.out.println("FundBuyFund: " + this.name + " buying " + purchasedName);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
@@ -85,7 +96,7 @@ public class FundWorth {
 			quote = addFundDailyQuote(date);
 		}
 		quote.fundSell(soldName, dayFundBought.get(soldName));
-		//dayFundBought.remove(soldName);
+		// dayFundBought.remove(soldName);
 	}
 
 	public void shareHolderBuy(String shareHolderName, Float dollarAmount, Date date) {
@@ -114,6 +125,10 @@ public class FundWorth {
 		return fundDailyQuotes.lastEntry().getValue();
 	}
 
+	public String getMajorityParticipant() {
+		return this.getLastQuote().getMajorityParticipant();
+	}
+	
 	private FundDailyQuote addFundDailyQuote(Date date) {
 		FundDailyQuote quote;
 		Calendar c = Calendar.getInstance();
@@ -135,7 +150,7 @@ public class FundWorth {
 	public static void updateDayFundBought(String myName, String targetFundName, Date newDate) {
 		FundWorth.fundWorthObjects.get(myName).dayFundBought.put(targetFundName, newDate);
 	}
-	
+
 	public static Date getDayFundBought(String myName, String targetFundName) {
 		return FundWorth.fundWorthObjects.get(myName).dayFundBought.get(targetFundName);
 	}
@@ -161,6 +176,7 @@ public class FundWorth {
 		FundDailyQuote toQuote = fw.getFundQuoteForDay(Utilities.getYear(toDate), Utilities.getMonth(toDate),
 				Utilities.getDay(toDate));
 		endingWorth = (toQuote.getNetWorth() * (1 - toQuote.getTotalShareHolderStake()));
+		endingWorth -= fw.totalAdditionalCashAdded; // The fund adding cash to itself shouldn't affect rate of return
 
 		return ((endingWorth - startingWorth) / startingWorth);
 	}

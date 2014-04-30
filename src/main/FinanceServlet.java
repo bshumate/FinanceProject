@@ -29,9 +29,9 @@ import utilities.Utilities;
 public class FinanceServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 5955178292419622844L;
-	private static int STATUS_SUCCESS = 0;
-	private static int STATUS_ERROR = 400;
-	private static int STATUS_NOT_IMPLEMENTED = 501;
+	private static final int STATUS_SUCCESS = 0;
+	private static final int STATUS_ERROR = 400;
+	private static final int STATUS_NOT_IMPLEMENTED = 501;
 
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String message = "";
@@ -74,8 +74,11 @@ public class FinanceServlet extends HttpServlet {
 			response.setStatus(STATUS_ERROR);
 			response.getWriter().write(e.getMessage());
 			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			response.setStatus(STATUS_ERROR);
+			response.getWriter().write(e.getMessage());
+			e.printStackTrace();
 		} catch (Exception e) {
-			System.out.println("Exception");
 			response.setStatus(STATUS_ERROR);
 			response.getWriter().write("Internal error");
 			e.printStackTrace();
@@ -124,16 +127,17 @@ public class FinanceServlet extends HttpServlet {
 							String[] transactions = transactionFile.split("\n");
 							for (int i = 0; i < transactions.length; i++) {
 								transactions[i].replaceAll("\\s+", "");
-								System.out.println("Transaction " + i + ": " + transactions[i]);
+								//System.out.println("Transaction " + i + ": " + transactions[i]);
 							}
 							AddTransaction.addTransaction(transactions);
-
-							message = fileItem.getString();
-							// System.out.println("Not form field: " + fileItem.getString());
 						}
 					}
 				} catch (FileUploadException e) {
 					e.printStackTrace();
+					
+				} catch (IllegalArgumentException e) {
+					message = e.getMessage();
+					status = STATUS_ERROR;
 				}
 			}
 		} else {

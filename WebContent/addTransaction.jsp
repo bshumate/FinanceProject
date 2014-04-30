@@ -90,16 +90,18 @@
 							<h4 class="modal-title" id="myModalLabel">Adding
 								Transactions</h4>
 						</div>
-						<div class="modal-body">
+						<div class="modal-body" style="color: grey;">
 							<p>Transactions can take one of two forms:
 							<ul>
-								<li><i>fund, &lt;name&gt;, &lt;dollar figure&gt;,
-										&lt;YYYY-MM-DD&gt;</i> - Add cash to an individual or portfolio,
-									creating it if it does not exist.</li>
-								<li><i>&lt;buy|sell&gt;, &lt;name&gt;, &lt;stock
-										symbol|fund name&gt;, &lt;dollar amount&gt;,
-										&lt;YYYY-MM-DD&gt;</i> - buy or sell a number of shares on a
-									specific date (assume closing value) through cash on hand.</li>
+								<li><i style="font-family: monospace; color: #B00000">&lt;fund|individual&gt;,
+										&lt;name&gt;, &lt;dollar figure&gt;, &lt;YYYY-MM-DD&gt;</i> - Add
+									cash to an individual or portfolio, creating it if it does not
+									exist.</li>
+								<li><i style="font-family: monospace; color: #B00000;">&lt;buy|sell&gt;,
+										&lt;name&gt;, &lt;stock symbol|fund name&gt;, &lt;dollar
+										amount&gt;, &lt;YYYY-MM-DD&gt;</i> - buy or sell a number of
+									shares on a specific date (assume closing value) through cash
+									on hand.</li>
 							</ul>
 							<p>All transactions should be in comma-separated-value form.
 								If using the text input box, there should be no characters after

@@ -170,7 +170,8 @@ public class FundQuery {
 						}
 						// If this fund already exists, simply add cash to it
 						else {
-							// FundWorth fw = fundWorths.get(fundToProcess);
+							FundWorth fw = fundWorths.get(fundToProcess);
+							fw.addCash(Float.parseFloat(amounts[i]), transactionDate);
 						}
 					} else if (types[i].equals("B")) {
 						// Check to see if the buy transaction is this fund buying into a different security
@@ -214,6 +215,22 @@ public class FundQuery {
 				}
 				// fundWorths.put(fundToProcess, null);
 			}
+			
+			// Calculate the majority participants - ask each fund for its majority participant
+			HashMap<String, String> majorityParticipantMap = new HashMap<String, String>();
+			for (String s : fundWorths.keySet()) {
+				String majorityParticipantForS = fundWorths.get(s).getMajorityParticipant();
+				if (!majorityParticipantForS.isEmpty()) {
+					if (majorityParticipantMap.containsKey(majorityParticipantForS)) {
+						String combinedVal = majorityParticipantMap.get(majorityParticipantForS);
+						combinedVal += ","+s;
+						majorityParticipantMap.put(majorityParticipantForS, combinedVal);
+					} else {
+						majorityParticipantMap.put(majorityParticipantForS, s);
+					}
+				}
+			}
+			
 
 			// Calculate the final set of funds to be sent to the client.
 			// This set of funds should be all funds selected at the beginning, intersected with the funds for which a
@@ -234,6 +251,7 @@ public class FundQuery {
 			String[] cash = new String[finalFundList.size()];
 			String[] investments = new String[finalFundList.size()];
 			String[] type = new String[finalFundList.size()];
+			String[] majorityParticipant = new String[finalFundList.size()];
 			int i = 0;
 			for (String s : finalFundList) {
 				// Only print out the security if it was processed/didn't have 0 associated transactions
@@ -252,6 +270,9 @@ public class FundQuery {
 					investments[i] = String.format("%.02f", fw.getFundQuoteForDay(toYear, toMonth, toDay)
 							.getInvestmentAmount());
 					type[i] = fundNameToFundType.get(s);
+					majorityParticipant[i] = majorityParticipantMap.get(s);
+					if (majorityParticipant[i] == null) 
+						majorityParticipant[i] = "";
 					i++;
 				}
 			}
@@ -262,6 +283,7 @@ public class FundQuery {
 			queryResult.put("cash", cash);
 			queryResult.put("investments", investments);
 			queryResult.put("type", type);
+			queryResult.put("majorityParticipant", majorityParticipant);
 
 			return queryResult.toString();
 		} finally {

@@ -1,5 +1,7 @@
 package utilities;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -109,6 +111,18 @@ public class Utilities {
 		Calendar c = Calendar.getInstance();
 		c.setTime(date);
 		return c.get(Calendar.DAY_OF_MONTH);
+	}
+	
+	public static boolean isValidDate(int year, int month, int day) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+		dateFormat.setLenient(false);
+		String dateAsString = (String.valueOf(year) + "-" + String.valueOf(month) + "-" + String.valueOf(day));
+		try {
+			dateFormat.parse(dateAsString);
+			return true;
+		} catch (ParseException e) {
+			return false;
+		}  // throws an exception; invalid date
 	}
 
 }

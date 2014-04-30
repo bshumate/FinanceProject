@@ -69,10 +69,10 @@ h1 {
 }
 
 #addTransactionHelpModal{
-	margin-left: 0em;
+	margin-left: -5em;
     width: 80%;
 }
 #addTransactionHelpModalDialog{
-    margin-left: -4em;
-    width: 40%;
+    margin-left: -7em;
+    width: 60%;
 }

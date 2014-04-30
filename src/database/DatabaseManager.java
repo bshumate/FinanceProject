@@ -24,7 +24,7 @@ public class DatabaseManager {
 		return DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
 	}
 
-	public static String executeUpdate(String query) throws ClassNotFoundException, SQLException, JSONException {
+	public static String executeUpdate(String query) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
 		Connection con = DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
 		Statement st = con.createStatement();
@@ -40,17 +40,35 @@ public class DatabaseManager {
 			}
 		}
 	}
-	
-	public static int executeQuery(PreparedStatement query, HashMap<String, String[]> response)
-			throws ClassNotFoundException, SQLException, JSONException {
 
-		//Class.forName("com.mysql.jdbc.Driver");
+	public static void executeUpdate(PreparedStatement query) throws ClassNotFoundException, SQLException {
+		Class.forName("com.mysql.jdbc.Driver");
+		Connection con = DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
+		Statement st = con.createStatement();
+		try {
+			query.executeUpdate();
+		} finally {
+			if (con != null) {
+				try {
+					st.close();
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+		}
+	}
+
+	public static int executeQuery(PreparedStatement query, HashMap<String, String[]> response)
+			throws ClassNotFoundException, SQLException {
+
+		// Class.forName("com.mysql.jdbc.Driver");
 		ResultSet rs;
 		rs = query.executeQuery();
 
 		int numCols = rs.getMetaData().getColumnCount();
 		int responseSize = 0;
-		ArrayList<ArrayList<String>> queryResult = new ArrayList<ArrayList<String>>(); // This will have a list entry for each column
+		ArrayList<ArrayList<String>> queryResult = new ArrayList<ArrayList<String>>(); // This will have a list entry
+																						// for each column
 
 		// Initialize the array to hold each column
 		for (int i = 0; i < numCols; i++) {

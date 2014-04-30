@@ -111,9 +111,6 @@ public class CompanyQuery {
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 			return -1F;
-		} catch (JSONException e) {
-			e.printStackTrace();
-			return -1F;
 		} finally {
 			// Always close SQL connections before returning
 			if (con != null) {

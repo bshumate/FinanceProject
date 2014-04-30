@@ -35,7 +35,11 @@ var controller = new function() {
 	var server = {
 		// error handler functions
 		handleAjaxError : function(jqXHR, textStatus, errorThrown, apiMethod) {
-			return ("Error: " + jqXHR.status + "(" + jqXHR.statusText + ").&nbsp;&nbsp;&nbsp;Method: " + apiMethod);
+			var errorMessage = jqXHR.responseText;
+			if (!errorMessage) {
+				errorMessage = jqXHR.statusText;
+			}
+			return ("Error: " + errorMessage);
 		},
 		handleError : function(method, errorcode, message) {
 			return ((method != null ? "Method: " + method + "\n" : "") + (errorcode != null ? "Error Code: " + errorcode + "\n" : "") + (message != null ? "Message: " + message : "No message"));
