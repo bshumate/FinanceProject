@@ -71,8 +71,9 @@ var controller = new function() {
 						}
 					},
 					error : function(jqXHR, textStatus, errorThrown) {
-						if (errorCallback && jqXHR) {
-							errorCallback(jqXHR.responseText);
+						var message = server.handleAjaxError(jqXHR, textStatus, errorThrown, apiMethod);
+						if (errorCallback) {
+							errorCallback(message);
 						}
 					}
 				});

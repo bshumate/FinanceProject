@@ -115,14 +115,17 @@ public class FundQuery {
 			// Iterate through each of these fund names (portfolios first, individuals second)
 			LinkedList<String> fundsToCalculate = new LinkedList<String>(Arrays.asList(response.get("name")));
 			HashMap<String, FundWorth> fundWorths = new HashMap<String, FundWorth>();
+			HashMap<String, Float> tempSellBuySoldPrice = new HashMap<String, Float>(); // "security sold,fund" -->
+																						// price
 			while (!fundsToCalculate.isEmpty()) {
+				System.out.println("Running");
 				// Get all transactions where the fund name matches the current fund name
 				String fundToProcess = fundsToCalculate.pollFirst();
-				System.out.println("next fund: " + fundToProcess + " size of list: " + fundsToCalculate.size());
 				query = con
-						.prepareStatement("SELECT * FROM Activity WHERE name=? OR security=? ORDER BY year ASC, month ASC, day ASC");
+						.prepareStatement("SELECT * FROM Activity WHERE year < 2014 AND name=? OR security=? OR security2=? ORDER BY year ASC, month ASC, day ASC, type ASC");
 				query.setString(1, fundToProcess);
 				query.setString(2, fundToProcess);
+				query.setString(3, fundToProcess);
 				responseSize = DatabaseManager.executeQuery(query, response);
 				if (responseSize < 1) {
 					// There are no transactions associated with this fund
@@ -141,6 +144,8 @@ public class FundQuery {
 						}
 						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
 																	// processed later
+						//System.out.println("1st check: " + fundToProcess + " depends on " + securityToCheck);
+
 						skipThisSecurity = true;
 						break;
 					}
@@ -148,21 +153,50 @@ public class FundQuery {
 				if (skipThisSecurity) {
 					continue;
 				}
+				// Check "security2" column - the "security2" column in a sellbuy depends on the "security" column
+				String[] security2 = response.get("security2");
+				String[] name = response.get("name");
+				for (int i = 0; i < security2.length; i++) {
+					String securityToCheck = security2[i];
+					if (!name[i].equals(fundToProcess)) // There will only be conflicts if the name depends on security2
+						continue;
+					if (!securityToCheck.isEmpty() && !securityToCheck.equals(fundToProcess)
+							&& !fundWorths.containsKey(securityToCheck) && !Utilities.isCompany(securityToCheck)) {
+						if (!fundsToCalculate.contains(securityToCheck)) {
+							fundsToCalculate.addLast(securityToCheck); // Add the missing fund to the list to be
+																		// processed
+
+						}
+						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
+																	// processed later
+						//System.out.println("2nd check: " + fundToProcess + " depends on " + securityToCheck);
+						skipThisSecurity = true;
+						break;
+					}
+				}
+				if (skipThisSecurity) {
+					continue;
+				}
+				System.out.println("Processing " + fundToProcess);
 
 				// Process transactions - build a FundWorth object for this fund during processing
 				String[] names = response.get("name");
 				String[] securities = response.get("security");
+				String[] securities2 = response.get("security2");
 				String[] types = response.get("type");
 				String[] years = response.get("year");
 				String[] months = response.get("month");
 				String[] days = response.get("day");
 				String[] amounts = response.get("amount");
+				if (fundToProcess.equals("fund_100") || fundToProcess.equals("fund_110")) {
+					System.out.println("here");
+				}
 
 				for (int i = 0; i < responseSize; i++) {
 					Date transactionDate = Utilities.getDateObject(years[i], months[i], days[i]);
 					// System.out.println("Transaction: " + types[i] + "\tname: " + names[i] + "\tsecurities: " +
 					// securities[i]);
-					if (types[i].equals("C")) {
+					if (types[i].equals(AddTransaction.CREATE_TYPE)) {
 						// If this fund does not exist, create it with the initial cash amount
 						if (fundWorths.get(fundToProcess) == null) {
 							FundWorth fw = new FundWorth(names[i], transactionDate, Float.parseFloat(amounts[i]));
@@ -173,7 +207,7 @@ public class FundQuery {
 							FundWorth fw = fundWorths.get(fundToProcess);
 							fw.addCash(Float.parseFloat(amounts[i]), transactionDate);
 						}
-					} else if (types[i].equals("B")) {
+					} else if (types[i].equals(AddTransaction.BUY_TYPE)) {
 						// Check to see if the buy transaction is this fund buying into a different security
 						if (names[i].equals(fundToProcess) && !securities[i].equals(fundToProcess)) {
 							FundWorth fw = fundWorths.get(fundToProcess);
@@ -190,7 +224,7 @@ public class FundQuery {
 							throw new SQLException("Database constraint violated. Invalid buy transaction on "
 									+ years[i] + "-" + months[i] + "-" + days[i]);
 						}
-					} else if (types[i].equals("S")) {
+					} else if (types[i].equals(AddTransaction.SELL_TYPE)) {
 						// Check to see if the sell transaction is this fund selling one of its securities
 						if (names[i].equals(fundToProcess) && !securities[i].equals(fundToProcess)) {
 							FundWorth fw = fundWorths.get(fundToProcess);
@@ -207,15 +241,55 @@ public class FundQuery {
 							throw new SQLException("Database constraint violated. Invalid sell transaction on "
 									+ years[i] + "-" + months[i] + "-" + days[i]);
 						}
-					} else if (types[i].equals("SB")) {
+					} else if (types[i].equals(AddTransaction.SELLBUY_TYPE)) {
+						// Check to see if the sellbuy is this fund selling/buying securities
+						if (names[i].equals(fundToProcess) && !securities[i].equals(fundToProcess)
+								&& !securities2[i].equals(fundToProcess)) {
+							// Execute sell, fundToProcess, security, date
+							// Execute buy, fundToProcess, security2, <amt from last sell>, date
+							FundWorth fw = fundWorths.get(fundToProcess);
+							float amount = fw.fundSellFund(securities[i], transactionDate);
+							fw.fundBuyFund(securities2[i], amount, transactionDate);
+						}
+						// Check to see if the sellbuy is selling this security
+						else if (securities[i].equals(fundToProcess) && !names[i].equals(fundToProcess)
+								&& !securities2[i].equals(fundToProcess)) {
+							FundWorth fw = fundWorths.get(fundToProcess);
+							float sellAmount = fw.shareHolderSell(names[i], transactionDate);
+							tempSellBuySoldPrice.put((fundToProcess + "," + names[i]), sellAmount);
+						}
+						// Check to see if the sellbuy is buying this security
+						else if (securities2[i].equals(fundToProcess) && !names[i].equals(fundToProcess)
+								&& !securities[i].equals(fundToProcess)) {
+							FundWorth fw = fundWorths.get(fundToProcess);
+							Float buyAmount = null;
+							if (Utilities.isCompany(securities[i])) {
+								buyAmount = getSellAmountForCompany(securities[i], name[i], con, years[i], months[i], days[i]);
+							} else {
+								String tempSellBuyName = securities[i] + "," + names[i];
+								buyAmount = tempSellBuySoldPrice.get(tempSellBuyName);
+								if (buyAmount == null) {
+									throw new SQLException(
+											"Processing error. Could not find dollar amount for sellbuy of "
+													+ fundToProcess + " on " + transactionDate);
+								}
+								tempSellBuySoldPrice.remove(tempSellBuyName);
+							}
+							fw.shareHolderBuy(names[i], buyAmount, transactionDate);
 
+						}
+						// If the sellbuy doesn't match any of the above cases, there is an error
+						else {
+							throw new SQLException("Database constraint violated. Invalid sellbuy transaction on "
+									+ years[i] + "-" + months[i] + "-" + days[i]);
+						}
 					} else {
-						throw new SQLException("Database constraint violated. Type must be C, B, or S.");
+						throw new SQLException("Database constraint violated. Type must be C, B, S, or SB.");
 					}
 				}
 				// fundWorths.put(fundToProcess, null);
 			}
-			
+
 			// Calculate the majority participants - ask each fund for its majority participant
 			HashMap<String, String> majorityParticipantMap = new HashMap<String, String>();
 			for (String s : fundWorths.keySet()) {
@@ -223,20 +297,19 @@ public class FundQuery {
 				if (!majorityParticipantForS.isEmpty()) {
 					if (majorityParticipantMap.containsKey(majorityParticipantForS)) {
 						String combinedVal = majorityParticipantMap.get(majorityParticipantForS);
-						combinedVal += ","+s;
+						combinedVal += "," + s;
 						majorityParticipantMap.put(majorityParticipantForS, combinedVal);
 					} else {
 						majorityParticipantMap.put(majorityParticipantForS, s);
 					}
 				}
 			}
-			
 
 			// Calculate the final set of funds to be sent to the client.
 			// This set of funds should be all funds selected at the beginning, intersected with the funds for which a
 			// FundWorth object was created
 			ArrayList<String> finalFundList = new ArrayList<String>();
-			for(String s : fundNameToFundType.keySet()) {
+			for (String s : fundNameToFundType.keySet()) {
 				if (fundWorths.containsKey(s)) {
 					finalFundList.add(s);
 				}
@@ -254,10 +327,11 @@ public class FundQuery {
 			String[] majorityParticipant = new String[finalFundList.size()];
 			int i = 0;
 			for (String s : finalFundList) {
+				System.out.println("Final fund list: " + s);
 				// Only print out the security if it was processed/didn't have 0 associated transactions
 				if (fundWorths.containsKey(s)) {
 					FundWorth fw = fundWorths.get(s);
-					System.out.println(fw.toString());
+					//System.out.println(fw.toString());
 					name[i] = s;
 					startWorth[i] = String.format("%.02f", fw.getInitialFundWorth());
 					endWorth[i] = String.format("%.02f", fw.getFundQuoteForDay(toYear, toMonth, toDay).getNetWorth());
@@ -271,7 +345,7 @@ public class FundQuery {
 							.getInvestmentAmount());
 					type[i] = fundNameToFundType.get(s);
 					majorityParticipant[i] = majorityParticipantMap.get(s);
-					if (majorityParticipant[i] == null) 
+					if (majorityParticipant[i] == null)
 						majorityParticipant[i] = "";
 					i++;
 				}
@@ -303,5 +377,41 @@ public class FundQuery {
 				}
 			}
 		}
+	}
+
+	private static float getSellAmountForCompany(String company, String fundThatSold, Connection con, String sellYearS, String sellMonthS, String sellDayS)
+			throws SQLException, ClassNotFoundException {
+		PreparedStatement query = null;
+		HashMap<String, String[]> response = new HashMap<String, String[]>();
+		int responseSize = 0;
+		int sellYear = Integer.parseInt(sellYearS);
+		int sellMonth = Integer.parseInt(sellMonthS);
+		int sellDay = Integer.parseInt(sellDayS);
+		
+		System.out.println("GetSellAmountForCompany: " + company + ", " + fundThatSold + ", " + sellYear + "-" + sellMonth + "-" + sellDay);
+		query = con
+				.prepareStatement("SELECT * FROM Activity WHERE name=? AND (security=? || security2=?) ORDER BY year ASC, month ASC, day ASC, type ASC");
+		query.setString(1, fundThatSold);
+		query.setString(2, company);
+		query.setString(3, company);
+		responseSize = DatabaseManager.executeQuery(query, response);
+		if (responseSize == 0)
+			return 0;
+		String amountForBuy = response.get("amount")[0]; // The first transaction will be a buy transaction.
+		if (amountForBuy.isEmpty() || amountForBuy.equalsIgnoreCase("null")) {
+			// Since this transaction didn't have an amount for its purchase, it was a sellbuy.
+			// Recursively find the value of the company that was sold in this sellbuy.
+
+		} else {
+			int buyYear = Integer.parseInt(response.get("year")[0]);
+			int buyMonth = Integer.parseInt(response.get("month")[0]);
+			int buyDay = Integer.parseInt(response.get("day")[0]);
+			float buyQuote = CompanyQuery.getQuoteOfCompany(company, buyYear, buyMonth, buyDay);
+			float sharesBought = Float.parseFloat(amountForBuy) / buyQuote;
+			float sellQuote = CompanyQuery.getQuoteOfCompany(company, sellYear, sellMonth, sellDay);
+			return sellQuote * sharesBought;
+		}
+
+		return 0;
 	}
 }

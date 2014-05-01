@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.Date;
 
 public class Utilities {
@@ -17,6 +18,31 @@ public class Utilities {
 	public static final int EARLIEST_YEAR = 2005;
 	public static final int EARLIEST_MONTH = 1;
 	public static final int EARLIEST_DAY = 3;
+	
+	public static Comparator<Date> s = new Comparator<Date>() {
+		@Override
+		public int compare(Date date1, Date date2) {
+			if (getYear(date1) < getYear(date2)) {
+				return -1;
+			} else if (getYear(date1) > getYear(date2)) {
+				return 1;
+			} else {
+				if (getMonth(date1) < getMonth(date2)) {
+					return -1;
+				} else if(getMonth(date1) > getMonth(date2)) {
+					return 1;
+				} else {
+					if (getDay(date1) < getDay(date2)) {
+						return -1;
+					} else if(getDay(date1) > getDay(date2)) {
+						return 1;
+					}
+				}
+			}
+			return 0;
+		}
+		
+	};
 	
 	public static final String stockList[] = { "MMM", "ABT", "ACE", "ACN", "ACT", "ADBE", "AES", "AET", "AFL", "A", "GAS",
 		"APD", "ARG", "AKAM", "AA", "ALXN", "ATI", "AGN", "ADS", "ALL", "ALTR", "MO", "AMZN", "AEE", "AEP", "AXP",
@@ -123,6 +149,27 @@ public class Utilities {
 		} catch (ParseException e) {
 			return false;
 		}  // throws an exception; invalid date
+	}
+	
+	public static int compareDates(Date date1, Date date2) {
+		if (getYear(date1) < getYear(date2)) {
+			return -1;
+		} else if (getYear(date1) > getYear(date2)) {
+			return 1;
+		} else {
+			if (getMonth(date1) < getMonth(date2)) {
+				return -1;
+			} else if(getMonth(date1) > getMonth(date2)) {
+				return 1;
+			} else {
+				if (getDay(date1) < getDay(date2)) {
+					return -1;
+				} else if(getDay(date1) > getDay(date2)) {
+					return 1;
+				}
+			}
+		}
+		return 0;
 	}
 
 }

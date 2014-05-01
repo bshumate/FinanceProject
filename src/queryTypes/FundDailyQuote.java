@@ -44,6 +44,7 @@ public class FundDailyQuote {
 			float shareValue = oldQuote.numSharesPerSecurity.get(s);
 			this.numSharesPerSecurity.put(s, shareValue);
 		}
+		//System.out.println("NumSharesPerSecurity of " + year+"-"+month+"-"+day+" Copied from " +oldQuote.year+"-"+oldQuote.month+"-"+oldQuote.day+": " + numSharesPerSecurity);
 		// Deep copy of stakeHolders
 		this.shareHolders = new HashMap<String, Float>();
 		for (String s : oldQuote.shareHolders.keySet()) {
@@ -98,7 +99,8 @@ public class FundDailyQuote {
 			float quote = CompanyQuery.getQuoteOfCompany(name, this.year, this.month, this.day);
 			shares = (dollarAmount / quote);
 			numSharesPerSecurity.put(name, shares);
-			System.out.println("Buy shares: " + shares + " shares. Quote: " + quote + ". Amount: " + dollarAmount);
+			//System.out.println("Buy shares: " + name + ", " + shares + " shares. Quote: " + quote + ". Amount: " + dollarAmount + ". Date:"+year+"-"+month+"-"+day);
+			//System.out.println(numSharesPerSecurity);
 		}
 		// If the fund is a portfolio, then just store the dollar amount invested. That porfolio will keep track of
 		// investment stake
@@ -108,14 +110,15 @@ public class FundDailyQuote {
 		cashAmount -= dollarAmount;
 	}
 
-	public void fundSell(String name, Date originalPurchaseDate) {
+	public float fundSell(String name, Date originalPurchaseDate) {
+		//System.out.println("Name: " + name + ", " + numSharesPerSecurity);
 		float originalInvestment = numSharesPerSecurity.get(name);
 		float sellAmount;
 		if (Utilities.isCompany(name)) {
 			float quote = CompanyQuery.getQuoteOfCompany(name, year, month, day);
 			sellAmount = quote * numSharesPerSecurity.get(name);
-			System.out.println("OriginalInvestment: " + originalInvestment + " shares. Quote: " + quote
-					+ ". SellAmount: " + sellAmount);
+			//System.out.println("OriginalInvestment: " + originalInvestment + " shares. Quote: " + quote
+			//		+ ". SellAmount: " + sellAmount);
 		} else {
 			float percentReturn = FundWorth.calcFundPercentReturn(this.fundDailyQuoteSecurityName, name,
 					originalPurchaseDate, Utilities.getDateObject(year, month, day));
@@ -123,6 +126,7 @@ public class FundDailyQuote {
 		}
 		cashAmount += sellAmount;
 		numSharesPerSecurity.remove(name);
+		return sellAmount;
 	}
 
 	public void shareHolderBuy(String shareHolderName, Float dollarAmount) {
@@ -145,7 +149,7 @@ public class FundDailyQuote {
 		this.shareHolders.put(shareHolderName, (dollarAmount/newNetWorth));
 	}
 
-	public void shareHolderSell(String shareHolderName) {
+	public float shareHolderSell(String shareHolderName) {
 		// Someone is selling out of this fund. Sell out of each currently owned fund by a percentage equivalent to the
 		// amount removed from the fund.
 		float oldNetWorth = this.getNetWorth();
@@ -163,6 +167,7 @@ public class FundDailyQuote {
 		float newNetWorth = this.getNetWorth();
 		this.shareHolders.remove(shareHolderName);
 		updateCurrentShareholdersStake(oldNetWorth, newNetWorth);
+		return amountSoldFromFund;
 		
 	}
 
@@ -171,8 +176,8 @@ public class FundDailyQuote {
 			Float oldPercentage = this.shareHolders.get(s);
 			Float newPercentage = oldPercentage * (oldNetWorth / newNetWorth);
 			this.shareHolders.put(s, newPercentage);
-			System.out.println("For fund " + this.fundDailyQuoteSecurityName + ": " + s + " now has a " + newPercentage
-					* 100 + "% stake.");
+			//System.out.println("For fund " + this.fundDailyQuoteSecurityName + ": " + s + " now has a " + newPercentage
+			//		* 100 + "% stake.");
 		}
 	}
 

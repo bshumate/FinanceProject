@@ -31,7 +31,7 @@ public class FundWorth {
 		this.name = name;
 		this.initialFundWorth = initialCashAmount;
 		this.totalAdditionalCashAdded = 0;
-		this.fundDailyQuotes = new TreeMap<Date, FundDailyQuote>();
+		this.fundDailyQuotes = new TreeMap<Date, FundDailyQuote>(Utilities.s);
 		this.dayFundBought = new HashMap<String, Date>();
 
 		// Get the year, month, and day from the date
@@ -80,7 +80,7 @@ public class FundWorth {
 	}
 
 	public void fundBuyFund(String purchasedName, Float dollarAmount, Date date) {
-		System.out.println("FundBuyFund: " + this.name + " buying " + purchasedName);
+		//System.out.println("FundBuyFund: " + this.name + " buying " + purchasedName);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
@@ -89,18 +89,18 @@ public class FundWorth {
 		dayFundBought.put(purchasedName, date);
 	}
 
-	public void fundSellFund(String soldName, Date date) {
-		System.out.println("FundSellFund: " + this.name + " selling " + soldName);
+	public float fundSellFund(String soldName, Date date) {
+		//System.out.println("FundSellFund: " + this.name + " selling " + soldName);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
 		}
-		quote.fundSell(soldName, dayFundBought.get(soldName));
+		return quote.fundSell(soldName, dayFundBought.get(soldName));
 		// dayFundBought.remove(soldName);
 	}
 
 	public void shareHolderBuy(String shareHolderName, Float dollarAmount, Date date) {
-		System.out.println("ShareHolderBuy: " + shareHolderName + " buying " + this.name);
+		//System.out.println("ShareHolderBuy: " + shareHolderName + " buying " + this.name);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
@@ -108,13 +108,13 @@ public class FundWorth {
 		quote.shareHolderBuy(shareHolderName, dollarAmount);
 	}
 
-	public void shareHolderSell(String shareHolderName, Date date) {
-		System.out.println("ShareHolderSell: " + shareHolderName + " selling " + this.name);
+	public float shareHolderSell(String shareHolderName, Date date) {
+		//System.out.println("ShareHolderSell: " + shareHolderName + " selling " + this.name);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
 		}
-		quote.shareHolderSell(shareHolderName);
+		return quote.shareHolderSell(shareHolderName);
 	}
 
 	public FundDailyQuote getFirstQuote() {

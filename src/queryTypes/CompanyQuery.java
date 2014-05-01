@@ -72,6 +72,14 @@ public class CompanyQuery {
 		HashMap<String, String[]> response = new HashMap<String, String[]>();
 		int responseSize = 0;
 		float price = -1;
+		// Make sure that the "From Date" is on or after Jan 3rd, 2005, which is the first market day of 2005
+		if (year < Utilities.EARLIEST_YEAR
+				|| (year == Utilities.EARLIEST_YEAR && month < Utilities.EARLIEST_MONTH)
+				|| (year == Utilities.EARLIEST_YEAR && month == Utilities.EARLIEST_MONTH && day < Utilities.EARLIEST_DAY)) {
+			year = Utilities.EARLIEST_YEAR;
+			month = Utilities.EARLIEST_MONTH;
+			day = Utilities.EARLIEST_DAY;
+		}
 		try {
 			con = DatabaseManager.getNewConnection();
 			query = con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? AND year=? AND month=? AND day=?");
@@ -79,7 +87,10 @@ public class CompanyQuery {
 			while (responseSize < 1) {
 				counter++;
 				if (counter == 10) {
-					return -1F;
+					query = con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year ASC, month ASC, day ASC LIMIT 1");
+					query.setString(1, ticker);
+					responseSize = DatabaseManager.executeQuery(query, response);
+					break;
 				}
 				query.setString(1, ticker);
 				query.setInt(2, year);
@@ -102,6 +113,8 @@ public class CompanyQuery {
 			if (responseSize > 0) {
 				String[] prices = response.get("price");
 				price = Float.parseFloat(prices[0]);
+			} else {
+				return -1F;
 			}
 			return price;
 

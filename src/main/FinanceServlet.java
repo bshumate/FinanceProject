@@ -34,6 +34,7 @@ public class FinanceServlet extends HttpServlet {
 	private static final int STATUS_NOT_IMPLEMENTED = 501;
 
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		System.out.println("Float max: " + Float.MAX_VALUE);
 		String message = "";
 		try {
 			String method = request.getParameter("method");

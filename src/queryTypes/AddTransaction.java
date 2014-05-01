@@ -3,6 +3,8 @@ package queryTypes;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -16,13 +18,13 @@ import database.DatabaseManager;
 
 public class AddTransaction {
 
-	private static final String CREATE_TYPE = "C";
-	private static final String BUY_TYPE = "B";
-	private static final String SELL_TYPE = "S";
-	private static final String SELLBUY_TYPE = "SB";
+	public static final String CREATE_TYPE = "A";
+	public static final String BUY_TYPE = "B";
+	public static final String SELL_TYPE = "S";
+	public static final String SELLBUY_TYPE = "SB";
 
-	private static final String INDIVIDUAL_TYPE = "I";
-	private static final String PORTFOLIO_TYPE = "P";
+	public static final String INDIVIDUAL_TYPE = "I";
+	public static final String PORTFOLIO_TYPE = "P";
 
 	public static void addTransaction(String[] transactions) throws IllegalArgumentException {
 		int i = 0;
@@ -51,8 +53,9 @@ public class AddTransaction {
 		Pattern fundCreationPattern = Pattern
 				.compile("(fund|individual),(\\S{1,}),([0-9]{0,}),([0-9]{4})-?([0-9]{2})-?([0-9]{2})");
 		Pattern buyPattern = Pattern.compile("buy,(\\S{1,}),(\\S{1,}),([0-9]{0,}),([0-9]{4})-?([0-9]{2})-?([0-9]{2})");
-		Pattern sellPattern = Pattern.compile("sell,\\S{1,},\\S{1,},[0-9]{4}-?[0-9]{2}-?[0-9]{2}");
-		Pattern sellbuyPattern = Pattern.compile("sellbuy,\\S{1,},\\S{1,},\\S{1,},[0-9]{4}-?[0-9]{2}-?[0-9]{2}");
+		Pattern sellPattern = Pattern.compile("sell,(\\S{1,}),(\\S{1,}),([0-9]{4})-?([0-9]{2})-?([0-9]{2})");
+		Pattern sellbuyPattern = Pattern
+				.compile("sellbuy,(\\S{1,}),(\\S{1,}),(\\S{1,}),([0-9]{4})-?([0-9]{2})-?([0-9]{2})");
 		Matcher fundMatcher = fundCreationPattern.matcher(transaction);
 		Matcher buyMatcher = buyPattern.matcher(transaction);
 		Matcher sellMatcher = sellPattern.matcher(transaction);
@@ -67,22 +70,55 @@ public class AddTransaction {
 			if (!Utilities.isValidDate(year, month, day)) {
 				throw new IllegalArgumentException("Invalid Date.");
 			}
+			if (type.contains(",") || fundName.contains(",")) {
+				throw new IllegalArgumentException("Too many commas in transaction. Either you have an extra field in"
+						+ " the transaction, or have an illegal comma in a fund name.");
+			}
 			addCreate(fundName, (type.equals("fund") ? PORTFOLIO_TYPE : INDIVIDUAL_TYPE), amount, year, month, day);
 		} else if (buyMatcher.matches()) {
-			String fundName = fundMatcher.group(1);
-			String securityName = fundMatcher.group(2);
-			float amount = Float.parseFloat(fundMatcher.group(3));
-			int year = Integer.parseInt(fundMatcher.group(4));
-			int month = Integer.parseInt(fundMatcher.group(5));
-			int day = Integer.parseInt(fundMatcher.group(6));
+			String fundName = buyMatcher.group(1);
+			String securityName = buyMatcher.group(2);
+			float amount = Float.parseFloat(buyMatcher.group(3));
+			int year = Integer.parseInt(buyMatcher.group(4));
+			int month = Integer.parseInt(buyMatcher.group(5));
+			int day = Integer.parseInt(buyMatcher.group(6));
 			if (!Utilities.isValidDate(year, month, day)) {
 				throw new IllegalArgumentException("Invalid Date.");
 			}
+			if (fundName.contains(",") || securityName.contains(",")) {
+				throw new IllegalArgumentException("Too many commas in transaction. Either you have an extra field in"
+						+ " the transaction, or have an illegal comma in a fund name.");
+			}
 			addBuy(fundName, securityName, amount, year, month, day);
 		} else if (sellMatcher.matches()) {
-			System.out.println("Transaction matched sell!");
+			String fundName = sellMatcher.group(1);
+			String securityName = sellMatcher.group(2);
+			int year = Integer.parseInt(sellMatcher.group(3));
+			int month = Integer.parseInt(sellMatcher.group(4));
+			int day = Integer.parseInt(sellMatcher.group(5));
+			if (!Utilities.isValidDate(year, month, day)) {
+				throw new IllegalArgumentException("Invalid Date.");
+			}
+			if (fundName.contains(",") || securityName.contains(",")) {
+				throw new IllegalArgumentException("Too many commas in transaction. Either you have an extra field in"
+						+ " the transaction, or have an illegal comma in a fund name.");
+			}
+			addSell(fundName, securityName, year, month, day);
 		} else if (sellbuyMatcher.matches()) {
-			System.out.println("Transaction matched sellbuy!");
+			String fundName = sellbuyMatcher.group(1);
+			String soldSecurity = sellbuyMatcher.group(2);
+			String boughtSecurity = sellbuyMatcher.group(3);
+			int year = Integer.parseInt(sellbuyMatcher.group(4));
+			int month = Integer.parseInt(sellbuyMatcher.group(5));
+			int day = Integer.parseInt(sellbuyMatcher.group(6));
+			if (!Utilities.isValidDate(year, month, day)) {
+				throw new IllegalArgumentException("Invalid Date.");
+			}
+			if (fundName.contains(",") || soldSecurity.contains(",") || boughtSecurity.contains(",")) {
+				throw new IllegalArgumentException("Too many commas in transaction. Either you have an extra field in"
+						+ " the transaction, or have an illegal comma in a fund name.");
+			}
+			addSellBuy(fundName, soldSecurity, boughtSecurity, year, month, day);
 		} else {
 			throw new IllegalArgumentException("Invalid transaction. Syntax error.");
 		}
@@ -90,24 +126,38 @@ public class AddTransaction {
 
 	private static void addCreate(String fundName, String type, float amount, int year, int month, int day)
 			throws IllegalArgumentException {
-		System.out.println("Create: " + fundName + ", " + type + ", " + amount + ", " + year + ", " + month + ", "
-				+ day);
+		//System.out.println("Create: " + fundName + ", " + type + ", " + amount + ", " + year + ", " + month + ", "
+		//		+ day);
+
+		if (Utilities.isCompany(fundName)) {
+			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
+		}
 
 		Connection con = null;
 		PreparedStatement query = null;
 		try {
-			if (Utilities.isCompany(fundName)) {
-				throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
-			}
-			
+			HashMap<String, String[]> response = new HashMap<String, String[]>();
+			int responseSize = 0;
+
 			// Check to see if the fund exists. If it does, make sure the types match.
 			con = DatabaseManager.getNewConnection();
-			query = con.prepareStatement("INSERT IGNORE INTO Fund (name, type) VALUES (?, ?)");
+			query = con.prepareStatement("SELECT * FROM Fund WHERE name=?");
 			query.setString(1, fundName);
-			query.setString(2, type);
-			DatabaseManager.executeUpdate(query);
-			System.out.println("query: " + query.toString());
+			responseSize = DatabaseManager.executeQuery(query, response);
 
+			if (responseSize == 0) { // The fund does not yet exist. Create it.
+				query = con.prepareStatement("INSERT INTO Fund (name, type) VALUES (?, ?)");
+				query.setString(1, fundName);
+				query.setString(2, type);
+				DatabaseManager.executeUpdate(query);
+			} else { // The fund already exists. Make sure its type of this add request ("I" or "P").
+				if (!type.equals(response.get("type")[0]) || !type.equals(response.get("type")[0])) {
+					throw new IllegalArgumentException("Fund " + fundName + " is of type " + type
+							+ " but was referred to as type " + response.get("type")[0]);
+				}
+			}
+
+			// Insert this transaction into the database
 			query = con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day, amount) VALUES (?, ?, ?, ?, ?, ?, ?);");
 			query.setString(1, fundName);
@@ -117,9 +167,100 @@ public class AddTransaction {
 			query.setInt(5, month);
 			query.setInt(6, day);
 			query.setFloat(7, amount);
-			System.out.println("query: " + query.toString());
 
 			DatabaseManager.executeUpdate(query);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} finally {
+			// Always close SQL connections before returning
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+			if (query != null) {
+				try {
+					query.close();
+				} catch (SQLException ignore) {
+				}
+			}
+		}
+
+	}
+
+	private static void verifyBuy(String fundName, String securityName, int year, int month, int day)
+			throws IllegalArgumentException {
+		Connection con = null;
+		PreparedStatement query = null;
+		try {
+			HashMap<String, String[]> response = new HashMap<String, String[]>();
+			Date potentialBuyDate = Utilities.getDateObject(year, month, day);
+
+			// Check that both funds exist and are valid, and that a portfolio isn't buying an individual
+			con = DatabaseManager.getNewConnection();
+			query = con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
+			query.setString(1, fundName);
+			query.setString(2, securityName);
+			DatabaseManager.executeQuery(query, response);
+			ArrayList<String> names = new ArrayList<String>(Arrays.asList(response.get("name")));
+			ArrayList<String> types = new ArrayList<String>(Arrays.asList(response.get("type")));
+			// The fund does not exist
+			if (!names.contains(fundName)) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" in buy transaction was never created.");
+			}
+			// The purchased security doesn't exist
+			if (!names.contains(securityName) && !Utilities.isCompany(securityName)) {
+				throw new IllegalArgumentException("Security \"" + securityName
+						+ "\" purchased in buy transaction was never created/doesn't exist.");
+			}
+			// A portfolio is trying to purchase an individual or another portfolio (illegal)
+			if (PORTFOLIO_TYPE.equals(types.get(names.indexOf(fundName))) && !Utilities.isCompany(securityName)) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" is a portfolio, but tried to purchase \""
+						+ securityName + "\" another portfolio/individual. Portfolios can only purchase stocks.");
+			}
+
+			// Check to make sure this fund hasn't already purchased this security before
+			query = con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+			query.setString(1, fundName);
+			response.clear();
+			DatabaseManager.executeQuery(query, response);
+			ArrayList<String> securityNames = new ArrayList<String>(Arrays.asList(response.get("security")));
+			ArrayList<String> security2Names = new ArrayList<String>(Arrays.asList(response.get("security2")));
+			if (securityNames.contains(securityName) || security2Names.contains(securityName)) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" has already already bought \""
+						+ securityName + "\". It cannot buy the same security twice.");
+			}
+			// Check to make sure the date of the buy transaction is after the creation date of the fund
+			Date fundCreationDate = Utilities.getDateObject(response.get("year")[0], response.get("month")[0],
+					response.get("day")[0]);
+			if (Utilities.compareDates(fundCreationDate, potentialBuyDate) > 0) {
+				System.out.println("fund creation date: " + fundCreationDate);
+				System.out.println("potential buy date: " + potentialBuyDate);
+				System.out.println(potentialBuyDate.compareTo(fundCreationDate));
+				System.out.println(fundCreationDate.compareTo(potentialBuyDate));
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" is trying to buy something on " + year
+						+ "-" + month + "-" + day + ", which is before it's creation date.");
+			}
+
+			// Ensure that if the security being purchased is a fund, it has been created by the purchase date
+			if (!Utilities.isCompany(securityName)) {
+				query = con
+						.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+				query.setString(1, securityName);
+				response.clear();
+				DatabaseManager.executeQuery(query, response);
+				Date securityCreationDate = Utilities.getDateObject(response.get("year")[0], response.get("month")[0],
+						response.get("day")[0]);
+				if (Utilities.compareDates(securityCreationDate, potentialBuyDate) > 0) {
+					throw new IllegalArgumentException("Security \"" + securityName + "\" is being bought on " + year
+							+ "-" + month + "-" + day + ", which is before it's creation date.");
+				}
+			}
 		} catch (SQLException e) {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
@@ -149,23 +290,30 @@ public class AddTransaction {
 		// Check to make sure no buys of this security exist in the database
 		// Check to make sure the fund and security exist. Ensure the security is not an individual, and if the fund is
 		// a portfolio, the security is a stock.
-		System.out.println("Buy: " + fundName + ", " + securityName + ", " + amount + ", " + year + ", " + month + ", "
-				+ day);
+
+		//System.out.println("Buy: " + fundName + ", " + securityName + ", " + amount + ", " + year + ", " + month + ", "
+		//		+ day);
+
+		// The fund name cannot be the same as an already-existing company
+		if (Utilities.isCompany(fundName)) {
+			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
+		}
 
 		Connection con = null;
 		PreparedStatement query = null;
 		try {
-			HashMap<String, String[]> response = new HashMap<String, String[]>();
-			Date potentialBuyDate = Utilities.getDateObject(year, month, day);
-			int responseSize = 0;
+			verifyBuy(fundName, securityName, year, month, day);
 
 			con = DatabaseManager.getNewConnection();
-			query = con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
+			query = con
+					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day, amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
 			query.setString(1, fundName);
 			query.setString(2, securityName);
-			responseSize = DatabaseManager.executeQuery(query, response);
-			//ArrayList<String> funds
-
+			query.setString(3, BUY_TYPE);
+			query.setInt(4, year);
+			query.setInt(5, month);
+			query.setInt(6, day);
+			query.setFloat(7, amount);
 			DatabaseManager.executeUpdate(query);
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -190,11 +338,200 @@ public class AddTransaction {
 		}
 	}
 
-	private static void addSell() throws IllegalArgumentException {
+	private static void verifySell(String fundName, String securityName, int year, int month, int day) {
+		Connection con = null;
+		PreparedStatement query = null;
+		try {
+			HashMap<String, String[]> response = new HashMap<String, String[]>();
+			Date potentialSellDate = Utilities.getDateObject(year, month, day);
 
+			// Check that both funds exist and are valid, and that a portfolio isn't buying an individual
+			con = DatabaseManager.getNewConnection();
+			query = con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
+			query.setString(1, fundName);
+			query.setString(2, securityName);
+			DatabaseManager.executeQuery(query, response);
+			ArrayList<String> names = new ArrayList<String>(Arrays.asList(response.get("name")));
+			ArrayList<String> types = new ArrayList<String>(Arrays.asList(response.get("type")));
+			// The fund does not exist
+			if (!names.contains(fundName)) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" in sell transaction was never created.");
+			}
+			// The sold security doesn't exist
+			if (!names.contains(securityName) && !Utilities.isCompany(securityName)) {
+				throw new IllegalArgumentException("Security \"" + securityName
+						+ "\" sold in sell transaction was never created/doesn't exist.");
+			}
+			// A portfolio is trying to sell an individual or another portfolio (illegal)
+			if (PORTFOLIO_TYPE.equals(types.get(names.indexOf(fundName))) && !Utilities.isCompany(securityName)) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" is a portfolio, but tried to sell \""
+						+ securityName + "\" another portfolio/individual. Portfolios can only own stocks.");
+			}
+
+			// Check to make sure this fund was purchased exactly 1 time before, but not yet sold
+			query = con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+			query.setString(1, fundName);
+			response.clear();
+			DatabaseManager.executeQuery(query, response);
+			ArrayList<String> securityNames = new ArrayList<String>(Arrays.asList(response.get("security")));
+			ArrayList<String> security2Names = new ArrayList<String>(Arrays.asList(response.get("security2")));
+			int numOccurancesOfSecurityName = 0;
+			for (int i = 0; i < securityNames.size(); i++) {
+				// If the security appears in the "security" column, ensure the transaction was a buy
+				if (securityName.equals(securityNames.get(i))) {
+					numOccurancesOfSecurityName++;
+					if (!BUY_TYPE.equals(response.get("type")[i])) {
+						throw new IllegalArgumentException("Fund \"" + fundName + "\" tried to sell \"" + securityName
+								+ "\" without every buying it.");
+					}
+				}
+				// If the security appears in the "security2" column, the transaction has to have been a sellbuy
+				else if (securityName.equals(security2Names.get(i))) {
+					if (!SELLBUY_TYPE.equals(response.get("type")[i])) {
+						throw new IllegalArgumentException("Fund \"" + fundName + "\" tried to sell \"" + securityName
+								+ "\" without every buying it.");
+					}
+					numOccurancesOfSecurityName++;
+				}
+			}
+			if (numOccurancesOfSecurityName > 1) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" tried to sell \"" + securityName
+						+ "\" without every buying it.");
+			}
+			if (numOccurancesOfSecurityName < 1) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" tried to sell \"" + securityName
+						+ "\" without every buying it.");
+			}
+			// Check to make sure the date of the sell transaction is after the date of the buy transaction
+			int buyTransactionIndex = securityNames.indexOf(securityName);
+			Date fundBuyDate = Utilities.getDateObject(response.get("year")[buyTransactionIndex],
+					response.get("month")[buyTransactionIndex], response.get("day")[buyTransactionIndex]);
+			if (fundBuyDate.compareTo(potentialSellDate) > 0) {
+				throw new IllegalArgumentException("Fund \"" + fundName + "\" is trying to sell \"" + securityName
+						+ "\" on " + year + "-" + month + "-" + day + ", which is before the day it bought it.");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} finally {
+			// Always close SQL connections before returning
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+			if (query != null) {
+				try {
+					query.close();
+				} catch (SQLException ignore) {
+				}
+			}
+		}
 	}
 
-	private static void addSellBuy() throws IllegalArgumentException {
+	private static void addSell(String fundName, String securityName, int year, int month, int day)
+			throws IllegalArgumentException {
+		//System.out.println("Sell: " + fundName + ", " + securityName + ", " + year + ", " + month + ", " + day);
+		// Make sure the everything exists, as in the buy case
+		// Make sure this transaction has occurred exactly 1 time before, and it was a buy that took place before this
+		// date
 
+		// The fund name cannot be the same as an already-existing company
+		if (Utilities.isCompany(fundName)) {
+			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
+		}
+
+		Connection con = null;
+		PreparedStatement query = null;
+		try {
+			verifySell(fundName, securityName, year, month, day);
+
+			con = DatabaseManager.getNewConnection();
+			query = con
+					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day) VALUES (?, ?, ?, ?, ?, ?)");
+			query.setString(1, fundName);
+			query.setString(2, securityName);
+			query.setString(3, SELL_TYPE);
+			query.setInt(4, year);
+			query.setInt(5, month);
+			query.setInt(6, day);
+			DatabaseManager.executeUpdate(query);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} finally {
+			// Always close SQL connections before returning
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+			if (query != null) {
+				try {
+					query.close();
+				} catch (SQLException ignore) {
+				}
+			}
+		}
+	}
+
+	private static void addSellBuy(String fundName, String soldSecurity, String boughtSecurity, int year, int month,
+			int day) throws IllegalArgumentException {
+		//System.out.println("Sellbuy: " + fundName + ", " + soldSecurity + ", " + boughtSecurity + ", " + year + ", "
+		//		+ month + ", " + day);
+
+		// The fund name cannot be the same as an already-existing company
+		if (Utilities.isCompany(fundName)) {
+			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
+		}
+
+		Connection con = null;
+		PreparedStatement query = null;
+		try {
+			verifySell(fundName, soldSecurity, year, month, day);
+			verifyBuy(fundName, boughtSecurity, year, month, day);
+
+			con = DatabaseManager.getNewConnection();
+			query = con
+					.prepareStatement("INSERT INTO Activity (name, security, security2, type, year, month, day) VALUES (?, ?, ?, ?, ?, ?, ?)");
+			query.setString(1, fundName);
+			query.setString(2, soldSecurity);
+			query.setString(3, boughtSecurity);
+			query.setString(4, SELLBUY_TYPE);
+			query.setInt(5, year);
+			query.setInt(6, month);
+			query.setInt(7, day);
+			DatabaseManager.executeUpdate(query);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new IllegalArgumentException(e.getMessage());
+		} finally {
+			// Always close SQL connections before returning
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+			if (query != null) {
+				try {
+					query.close();
+				} catch (SQLException ignore) {
+				}
+			}
+		}
+
+		// Break up buy/sell into helper methods for validation, then call these helper methods in addSellBuy as well
 	}
 }
