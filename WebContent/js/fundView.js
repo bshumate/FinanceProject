@@ -15,7 +15,7 @@ function fundViewInit() {
 	$("#fundExportToCSV").click(
 		function() {
 			console.log("Fund export to CSV clicked.");
-			var stringToCSV = "Name, Type, Starting Worth ($), Ending Worth ($), Return/Yr (%), Cash ($), Investments ($), Majority Participant In\n";
+			var stringToCSV = "Name, Type, Starting Worth ($), Ending Worth ($), Return (%), Cash ($), Investments ($), Majority Participant In\n";
 			for (var i = 0; i < g_fundName.length; i++) {
 				stringToCSV += (g_fundName[i] + ", " + g_fundType[i] + ", " + g_fundStartWorth[i] + ", " + g_fundEndWorth[i] + ", " + g_fundReturnRate[i] + ", " + g_fundCash[i] + ", "
 					+ g_fundInvestments[i] + ", " + g_majorityParticipant[i] + "\n");
@@ -30,6 +30,33 @@ function fundViewInit() {
 		$("#fundAlertError").hide();
 	});
 };
+
+function getFundTransactions(fund) {
+	console.log("getFundTransactions")
+	console.log(fund);
+	var fundTransactions = controller.fundTransactions();
+	fundTransactions.fund = fund;
+	$("#viewFundTransactionsModal").modal('show');
+	$("#viewFundTransactionsModalLabel").text(fund + " Transactions.");
+	
+	var successCallback = function(data) {
+		// display data in modal body
+		var response = data["response"];
+		var transactions = "<ol>";
+		for (var i = 0; i < response.length; i++) {
+			transactions += "<li>" + response[i] + "</li>";
+		}
+		transactions += "</ol>";
+		console.log(transactions);
+		$("#viewFundTransactionsModalBody").empty().append(transactions);
+		
+	};
+	var errorCallback = function(data) {
+		$("#viewFundTransactionsModalBody").text("Unable to display transactions.");
+	};
+	controller.server.getFundTransactions(fundTransactions, successCallback, errorCallback);
+
+}
 
 function fundQuery() {
 	console.log("Fund refresh table button clicked.");
@@ -79,7 +106,9 @@ function fundQuery() {
 	filter.portfolio = portfolio;
 
 	var message = "";
+	$("#fundAlertLoading").show();
 	var successCallback = function(data) {
+		$("#fundAlertLoading").hide();
 		if (data['name'] == null || data['type'] == null || data['startWorth'] == null || data['endWorth'] == null || data['returnRate'] == null || data['cash'] == null || data['investments'] == null) {
 			errorCallback("Error: Server response was missing necessary data.");
 			return;
@@ -93,19 +122,21 @@ function fundQuery() {
 		g_fundCash = data['cash'];
 		g_fundInvestments = data['investments'];
 		g_majorityParticipant = data['majorityParticipant'];
-		
+
 		var deepCopyEndWorth = $.extend(true, [], g_fundEndWorth);
 		for (var i = 0; i < deepCopyEndWorth.length; i++) {
 			deepCopyEndWorth[i] = parseFloat(deepCopyEndWorth[i]);
 		}
-		deepCopyEndWorth.sort(function(a,b) { return a - b;}).reverse();
+		deepCopyEndWorth.sort(function(a, b) {
+			return a - b;
+		}).reverse();
 		var rankingOfNetWorths = [];
 		for (var i = 0; i < deepCopyEndWorth.length; i++) {
 			rankingOfNetWorths[i] = deepCopyEndWorth[i];
 		}
-		
+
 		console.log(rankingOfNetWorths);
-		
+
 		for (var i = 0; i < g_fundType.length; i++) {
 			if (g_fundType[i] == 'I')
 				g_fundType[i] = 'Individual';
@@ -115,8 +146,9 @@ function fundQuery() {
 		var tableUpdate = '';
 		var i = 0;
 		for (var i = 0; i < g_fundName.length; i++) {
-			tableUpdate += ("<tr><td>" + ((rankingOfNetWorths.indexOf(parseFloat(g_fundEndWorth[i])))+1) + "</td><td>" + g_fundName[i] + "</td><td>" + g_fundType[i] + "</td><td>" + g_fundStartWorth[i] + "</td><td>" + g_fundEndWorth[i] + "</td><td>"
-				+ g_fundReturnRate[i] + "%</td><td>" + g_fundCash[i] + "</td><td>" + g_fundInvestments[i] + "</td><td>" + g_majorityParticipant[i] + "</td></tr>");
+			tableUpdate += ("<tr><td>" + ((rankingOfNetWorths.indexOf(parseFloat(g_fundEndWorth[i]))) + 1) + "</td><td><a href=Javascript:getFundTransactions(\"" + g_fundName[i] + "\")>"
+				+ g_fundName[i] + "</a><td>" + g_fundType[i] + "</td><td>" + g_fundStartWorth[i] + "</td><td>" + g_fundEndWorth[i] + "</td><td>" + g_fundReturnRate[i] + "%</td><td>" + g_fundCash[i]
+				+ "</td><td>" + g_fundInvestments[i] + "</td><td>" + g_majorityParticipant[i] + "</td></tr>");
 		}
 		$("#fund-table-body").empty().append(tableUpdate);
 		$("#fundAlertSuccess").show();
@@ -127,6 +159,7 @@ function fundQuery() {
 
 	};
 	var errorCallback = function(errorMessage) {
+		$("#fundAlertLoading").hide();
 		$("#fundAlertError").show();
 		$("#fundAlertErrorText").html(errorMessage);
 	};

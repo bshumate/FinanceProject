@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import main.FinanceServlet;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -133,20 +135,18 @@ public class AddTransaction {
 			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
 		}
 
-		Connection con = null;
 		PreparedStatement query = null;
 		try {
 			HashMap<String, String[]> response = new HashMap<String, String[]>();
 			int responseSize = 0;
 
 			// Check to see if the fund exists. If it does, make sure the types match.
-			con = DatabaseManager.getNewConnection();
-			query = con.prepareStatement("SELECT * FROM Fund WHERE name=?");
+			query = FinanceServlet.con.prepareStatement("SELECT * FROM Fund WHERE name=?");
 			query.setString(1, fundName);
 			responseSize = DatabaseManager.executeQuery(query, response);
 
 			if (responseSize == 0) { // The fund does not yet exist. Create it.
-				query = con.prepareStatement("INSERT INTO Fund (name, type) VALUES (?, ?)");
+				query = FinanceServlet.con.prepareStatement("INSERT INTO Fund (name, type) VALUES (?, ?)");
 				query.setString(1, fundName);
 				query.setString(2, type);
 				DatabaseManager.executeUpdate(query);
@@ -158,7 +158,7 @@ public class AddTransaction {
 			}
 
 			// Insert this transaction into the database
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day, amount) VALUES (?, ?, ?, ?, ?, ?, ?);");
 			query.setString(1, fundName);
 			query.setString(2, fundName);
@@ -176,13 +176,6 @@ public class AddTransaction {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
 			if (query != null) {
 				try {
 					query.close();
@@ -195,15 +188,13 @@ public class AddTransaction {
 
 	private static void verifyBuy(String fundName, String securityName, int year, int month, int day)
 			throws IllegalArgumentException {
-		Connection con = null;
 		PreparedStatement query = null;
 		try {
 			HashMap<String, String[]> response = new HashMap<String, String[]>();
 			Date potentialBuyDate = Utilities.getDateObject(year, month, day);
 
 			// Check that both funds exist and are valid, and that a portfolio isn't buying an individual
-			con = DatabaseManager.getNewConnection();
-			query = con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
+			query = FinanceServlet.con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
 			query.setString(1, fundName);
 			query.setString(2, securityName);
 			DatabaseManager.executeQuery(query, response);
@@ -225,7 +216,7 @@ public class AddTransaction {
 			}
 
 			// Check to make sure this fund hasn't already purchased this security before
-			query = con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+			query = FinanceServlet.con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
 			query.setString(1, fundName);
 			response.clear();
 			DatabaseManager.executeQuery(query, response);
@@ -249,7 +240,7 @@ public class AddTransaction {
 
 			// Ensure that if the security being purchased is a fund, it has been created by the purchase date
 			if (!Utilities.isCompany(securityName)) {
-				query = con
+				query = FinanceServlet.con
 						.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
 				query.setString(1, securityName);
 				response.clear();
@@ -268,13 +259,7 @@ public class AddTransaction {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close PreparedStatements
 			if (query != null) {
 				try {
 					query.close();
@@ -299,13 +284,11 @@ public class AddTransaction {
 			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
 		}
 
-		Connection con = null;
 		PreparedStatement query = null;
 		try {
 			verifyBuy(fundName, securityName, year, month, day);
 
-			con = DatabaseManager.getNewConnection();
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day, amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
 			query.setString(1, fundName);
 			query.setString(2, securityName);
@@ -322,13 +305,7 @@ public class AddTransaction {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close PreparedStatements
 			if (query != null) {
 				try {
 					query.close();
@@ -339,15 +316,13 @@ public class AddTransaction {
 	}
 
 	private static void verifySell(String fundName, String securityName, int year, int month, int day) {
-		Connection con = null;
 		PreparedStatement query = null;
 		try {
 			HashMap<String, String[]> response = new HashMap<String, String[]>();
 			Date potentialSellDate = Utilities.getDateObject(year, month, day);
 
 			// Check that both funds exist and are valid, and that a portfolio isn't buying an individual
-			con = DatabaseManager.getNewConnection();
-			query = con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
+			query = FinanceServlet.con.prepareStatement("SELECT * FROM Fund WHERE name=? OR name=?");
 			query.setString(1, fundName);
 			query.setString(2, securityName);
 			DatabaseManager.executeQuery(query, response);
@@ -369,7 +344,7 @@ public class AddTransaction {
 			}
 
 			// Check to make sure this fund was purchased exactly 1 time before, but not yet sold
-			query = con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+			query = FinanceServlet.con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
 			query.setString(1, fundName);
 			response.clear();
 			DatabaseManager.executeQuery(query, response);
@@ -417,13 +392,7 @@ public class AddTransaction {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close PreparedStatements
 			if (query != null) {
 				try {
 					query.close();
@@ -445,13 +414,11 @@ public class AddTransaction {
 			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
 		}
 
-		Connection con = null;
 		PreparedStatement query = null;
 		try {
 			verifySell(fundName, securityName, year, month, day);
 
-			con = DatabaseManager.getNewConnection();
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day) VALUES (?, ?, ?, ?, ?, ?)");
 			query.setString(1, fundName);
 			query.setString(2, securityName);
@@ -467,13 +434,7 @@ public class AddTransaction {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close PreparedStatements
 			if (query != null) {
 				try {
 					query.close();
@@ -493,14 +454,12 @@ public class AddTransaction {
 			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
 		}
 
-		Connection con = null;
 		PreparedStatement query = null;
 		try {
 			verifySell(fundName, soldSecurity, year, month, day);
 			verifyBuy(fundName, boughtSecurity, year, month, day);
 
-			con = DatabaseManager.getNewConnection();
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, security2, type, year, month, day) VALUES (?, ?, ?, ?, ?, ?, ?)");
 			query.setString(1, fundName);
 			query.setString(2, soldSecurity);
@@ -517,13 +476,7 @@ public class AddTransaction {
 			e.printStackTrace();
 			throw new IllegalArgumentException(e.getMessage());
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close PreparedStatements
 			if (query != null) {
 				try {
 					query.close();

@@ -9,7 +9,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.json.JSONException;
+import main.FinanceServlet;
 
 public class DatabaseManager {
 
@@ -26,36 +26,19 @@ public class DatabaseManager {
 
 	public static String executeUpdate(String query) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
-		Connection con = DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
-		Statement st = con.createStatement();
-		try {
-			return String.valueOf(st.executeUpdate(query));
-		} finally {
-			if (con != null) {
-				try {
-					st.close();
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
-		}
+		Statement st = FinanceServlet.con.createStatement();
+		return String.valueOf(st.executeUpdate(query));
+
 	}
 
 	public static void executeUpdate(PreparedStatement query) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
-		Connection con = DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
-		Statement st = con.createStatement();
-		try {
-			query.executeUpdate();
-		} finally {
-			if (con != null) {
-				try {
-					st.close();
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
-		}
+		long time = System.currentTimeMillis();
+		FinanceServlet.numDBAccesses++;
+		query.executeUpdate();
+		time = System.currentTimeMillis() - time;
+		FinanceServlet.totalDBAccessTime += time;
+
 	}
 
 	public static int executeQuery(PreparedStatement query, HashMap<String, String[]> response)
@@ -63,7 +46,11 @@ public class DatabaseManager {
 
 		// Class.forName("com.mysql.jdbc.Driver");
 		ResultSet rs;
+		long time = System.currentTimeMillis();
 		rs = query.executeQuery();
+		time = System.currentTimeMillis() - time;
+		FinanceServlet.totalDBAccessTime += time;
+		FinanceServlet.numDBAccesses++;
 
 		int numCols = rs.getMetaData().getColumnCount();
 		int responseSize = 0;

@@ -26,8 +26,8 @@
 	<div class="tabbable">
 		<ul class="nav nav-tabs">
 			<li><a href="#pane1" data-toggle="tab">Company View</a></li>
-			<li><a href="#pane2" data-toggle="tab">Fund View</a></li>
-			<li class="active"><a href="#pane3" data-toggle="tab">Add
+			<li class="active"><a href="#pane2" data-toggle="tab">Fund View</a></li>
+			<li><a href="#pane3" data-toggle="tab">Add
 					Transaction</a></li>
 			<li><a href="#pane4" data-toggle="tab">About</a></li>
 		</ul>
@@ -35,10 +35,10 @@
 			<div id="pane1" class="tab-pane">
 				<%@ include file="companyView.jsp"%>
 			</div>
-			<div id="pane2" class="tab-pane">
+			<div id="pane2" class="tab-pane active">
 				<%@ include file="fundView.jsp"%>
 			</div>
-			<div id="pane3" class="tab-pane active">
+			<div id="pane3" class="tab-pane">
 				<%@ include file="addTransaction.jsp"%>
 			</div>
 			<div id="pane4" class="tab-pane">

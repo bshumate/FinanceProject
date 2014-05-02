@@ -3,8 +3,10 @@ package queryTypes;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 
+import main.FinanceServlet;
 import utilities.Utilities;
 
 public class FundWorth {
@@ -58,8 +60,8 @@ public class FundWorth {
 
 	public FundDailyQuote getFundQuoteForDay(int year, int month, int day) {
 		Date d = Utilities.getDateObject(year, month, day);
-		FundDailyQuote existingQuote = (fundDailyQuotes.floorEntry(d) == null ? null : fundDailyQuotes.floorEntry(d)
-				.getValue());
+		Entry<Date, FundDailyQuote> e = fundDailyQuotes.floorEntry(d);
+		FundDailyQuote existingQuote = (e == null ? null : e.getValue());
 		FundDailyQuote quoteToReturn = null;
 		if (existingQuote == null) { // The date we want is before the first element in the tree.
 			// Get the first element
@@ -179,6 +181,11 @@ public class FundWorth {
 		endingWorth -= fw.totalAdditionalCashAdded; // The fund adding cash to itself shouldn't affect rate of return
 
 		return ((endingWorth - startingWorth) / startingWorth);
+	}
+	
+	public static float calcTotalFundPercentReturn(FundWorth fw, FundDailyQuote toQuote, float startNetWorth, float endNetWorth) {
+		float adjustedEndNetWorth = (endNetWorth * (1 - toQuote.getTotalShareHolderStake())) - fw.totalAdditionalCashAdded;
+		return ((adjustedEndNetWorth - startNetWorth) / startNetWorth);
 	}
 
 	public static void clearFundWorthSet() {

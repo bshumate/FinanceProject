@@ -19,6 +19,10 @@
 				<span id="addTransactionAlertSuccessText">Successful
 					transaction add!</span>
 			</div>
+			<div class="alert alert-info fade in" id="addTransactionAlertLoading"
+                style="display: none; border-width: 2px; border-color: grey; margin-top: 1em;">
+                <span id="addTransactionAlertLoadingText">Loading...</span>
+            </div>
 			<div class="alert alert-danger fade in" id="addTransactionAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em;">
 				<button id="addTransactionAlertErrorButton" type="button"
@@ -116,6 +120,7 @@
 					</div>
 				</div>
 			</div>
+			<!-- modal -->
 		</div>
 		<!-- //main content -->
 	</div>

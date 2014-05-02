@@ -40,6 +40,7 @@ function addTransactionInit() {
 }
 
 function transactionTextSubmit(text) {
+	$("#addTransactionAlertLoading").show();
 	var successCallback = function(data) {
 		console.log("SUCCESS");
 		console.log(data);
@@ -47,7 +48,7 @@ function transactionTextSubmit(text) {
 		$("#addTransactionAlertSuccess").show();
 		var $t = $("#addTransactionSingle");
 		$("#addTransactionSingle").val('');
-		
+		$("#addTransactionAlertLoading").hide();
 	};
 	var errorCallback = function(data) {
 		console.log("ERROR");
@@ -55,22 +56,28 @@ function transactionTextSubmit(text) {
 		$("#addTransactionAlertErrorText").text(data);
 		$("#addTransactionAlertError").show();
 		$("#addTransactionAlertSuccess").hide();
+		$("#addTransactionAlertLoading").hide();
 	};
 	var transaction =  controller.newTransaction();
 	transaction.transaction = text;
+	
 	controller.server.addTransaction(transaction, successCallback, errorCallback);
+	
 }
 
 function transactionFileUpload(form, e) {
+	$("#addTransactionAlertLoading").show();
 	var successCallback = function(data) {
 		$("#addTransactionAlertError").hide();
 		$("#addTransactionAlertSuccess").show();
+		$("#addTransactionAlertLoading").hide();
 	};
 	var errorCallback = function(data) {
 		console.log(data);
 		$("#addTransactionAlertErrorText").text(data);
 		$("#addTransactionAlertError").show();
 		$("#addTransactionAlertSuccess").hide();
+		$("#addTransactionAlertLoading").hide();
 	};
 	e.preventDefault(); // Prevent Default action.
 	controller.server.uploadTransactionFile(form, successCallback, errorCallback);

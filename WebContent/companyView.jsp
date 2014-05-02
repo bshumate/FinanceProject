@@ -62,6 +62,10 @@
 				<button id="companyAlertSuccessButton" type="button" class="close">×</button>
 				<span id="companyAlertSuccessText">Successful company query!</span>
 			</div>
+			<div class="alert alert-info fade in" id="companyAlertLoading"
+                style="display: none; border-width: 2px; border-color: grey; margin-top: 1em;">
+                <span id="companyAlertLoadingText">Loading...</span>
+            </div>
 			<div class="alert alert-danger fade in" id="companyAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em">
 				<button id="companyAlertErrorButton" type="button" class="close">×</button>

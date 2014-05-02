@@ -7,9 +7,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import main.FinanceServlet;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import utilities.QuoteDate;
 import utilities.Utilities;
 import database.DatabaseManager;
 
@@ -28,6 +31,8 @@ public class CompanyQuery {
 	public static int HIGH = 3;
 	public static int LOW = 4;
 	public static int RISK = 5;
+	
+	public static HashMap<QuoteDate, Float> quoteCache = new HashMap<QuoteDate, Float>();
 
 	public CompanyQuery() {
 		// Default constructor
@@ -66,12 +71,14 @@ public class CompanyQuery {
 	}
 
 	// Return -1 on error
-	public static Float getQuoteOfCompany(String ticker, int year, int month, int day) {
-		Connection con = null;
+	public static Float getQuoteOfCompany(String ticker, int year_in, int month_in, int day_in) {
 		PreparedStatement query = null;
 		HashMap<String, String[]> response = new HashMap<String, String[]>();
 		int responseSize = 0;
 		float price = -1;
+		int year = year_in;
+		int month = month_in;
+		int day = day_in;
 		// Make sure that the "From Date" is on or after Jan 3rd, 2005, which is the first market day of 2005
 		if (year < Utilities.EARLIEST_YEAR
 				|| (year == Utilities.EARLIEST_YEAR && month < Utilities.EARLIEST_MONTH)
@@ -81,13 +88,18 @@ public class CompanyQuery {
 			day = Utilities.EARLIEST_DAY;
 		}
 		try {
-			con = DatabaseManager.getNewConnection();
-			query = con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? AND year=? AND month=? AND day=?");
+			QuoteDate tempQuote = new QuoteDate(ticker, year, month, day);
+			if (quoteCache.containsKey(tempQuote)) {
+				return quoteCache.get(tempQuote);
+			}
+			
+			query = FinanceServlet.con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? AND year=? AND month=? AND day=?");
 			int counter = 0;
+			
 			while (responseSize < 1) {
 				counter++;
 				if (counter == 10) {
-					query = con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year ASC, month ASC, day ASC LIMIT 1");
+					query = FinanceServlet.con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year ASC, month ASC, day ASC LIMIT 1");
 					query.setString(1, ticker);
 					responseSize = DatabaseManager.executeQuery(query, response);
 					break;
@@ -109,10 +121,19 @@ public class CompanyQuery {
 						day = Utilities.maxDaysInMonth(month);
 					}
 				}
+				
+				tempQuote.setNew(year, month, day);
+				if (quoteCache.containsKey(tempQuote)) {
+					return quoteCache.get(tempQuote);
+				}
 			}
 			if (responseSize > 0) {
 				String[] prices = response.get("price");
 				price = Float.parseFloat(prices[0]);
+				QuoteDate qd = new QuoteDate(ticker, year, month, day);
+				QuoteDate qd_in = new QuoteDate(ticker, year_in, month_in, day_in);
+				quoteCache.put(qd, price);
+				quoteCache.put(qd_in, price);
 			} else {
 				return -1F;
 			}
@@ -125,13 +146,7 @@ public class CompanyQuery {
 			e.printStackTrace();
 			return -1F;
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close the prepared statement
 			if (query != null) {
 				try {
 					query.close();
@@ -142,7 +157,6 @@ public class CompanyQuery {
 	}
 
 	public static String companyQuery(String json) throws ClassNotFoundException, SQLException, JSONException {
-		Connection con = DatabaseManager.getNewConnection();
 		PreparedStatement query = null;
 		try {
 			JSONObject dataIn = new JSONObject(json);
@@ -174,7 +188,7 @@ public class CompanyQuery {
 			}
 
 			// Get starting prices
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("SELECT ticker, price FROM Quotes WHERE day=? AND month=? AND year=? GROUP BY ticker;");
 			query.setInt(1, fromDay);
 			query.setInt(2, fromMonth);
@@ -224,7 +238,7 @@ public class CompanyQuery {
 			}
 
 			// Get ending prices
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("SELECT ticker, price FROM Quotes WHERE (day=? OR day=? OR day=? OR day=?) AND month=? AND year=? GROUP BY ticker;");
 			query.setInt(1, toDay);
 			query.setInt(2, toDay + 1);
@@ -252,7 +266,7 @@ public class CompanyQuery {
 
 			// Calculate return
 			int totalDaysHeld = Utilities.calcTotalDaysHeld(fromDay, fromMonth, fromYear, toDay, toMonth, toYear);
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year asc, month asc, day asc LIMIT 1;");
 			for (String s : responseMap.keySet()) {
 				CompanyQuery c = responseMap.get(s);
@@ -275,7 +289,7 @@ public class CompanyQuery {
 			// Calculate high, low, and risk
 			response = new HashMap<String, String[]>();
 			String[] responseMapKeySet = responseMap.keySet().toArray(new String[responseMap.size()]);
-			query = con
+			query = FinanceServlet.con
 					.prepareStatement("SELECT price, year FROM Quotes WHERE ((year > ? AND year < ?) "
 							+ "OR ((year=? AND month < ?) OR (year=? AND month > ?)) OR ((year = ? AND month = ? AND day <= ?) "
 							+ "OR (year = ? AND month = ? AND day >= ?))) AND ticker=? ORDER BY year asc, month asc, day asc;");
@@ -390,13 +404,7 @@ public class CompanyQuery {
 			queryResult.put("risk", finalRisk);
 			return queryResult.toString();
 		} finally {
-			// Always close SQL connections before returning
-			if (con != null) {
-				try {
-					con.close();
-				} catch (SQLException ignore) {
-				}
-			}
+			// Always close the prepared statement
 			if (query != null) {
 				try {
 					query.close();

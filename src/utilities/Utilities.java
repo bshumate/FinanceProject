@@ -13,6 +13,7 @@ public class Utilities {
 	public static final String METHOD_COMPANY_QUERY = "companyQuery";
 	public static final String METHOD_UPDATE_QUOTES = "updateQuotes";
 	public static final String METHOD_FUND_QUERY = "fundQuery";
+	public static final String METHOD_GET_FUND_TRANSACTIONS = "getFundTransactions";
 	public static final String METHOD_ADD_TRANSACTION = "addTransaction";
 	
 	public static final int EARLIEST_YEAR = 2005;
@@ -130,7 +131,7 @@ public class Utilities {
 	public static int getMonth(Date date) {
 		Calendar c = Calendar.getInstance();
 		c.setTime(date);
-		return c.get(Calendar.MONTH);
+		return (c.get(Calendar.MONTH)+1);
 	}
 	
 	public static int getDay(Date date) {

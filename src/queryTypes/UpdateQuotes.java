@@ -10,6 +10,8 @@ import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import main.FinanceServlet;
+
 import org.json.JSONException;
 
 import utilities.Utilities;
@@ -18,9 +20,8 @@ import database.DatabaseManager;
 public class UpdateQuotes {
 
 	public static String updateQuotes(String json) throws ClassNotFoundException, SQLException, JSONException, IOException {
-		Connection con = DatabaseManager.getNewConnection();
 
-		PreparedStatement query = con
+		PreparedStatement query = FinanceServlet.con
 				.prepareStatement("INSERT IGNORE INTO Company (ticker) VALUES (?);");
 
 		// Update the Company table

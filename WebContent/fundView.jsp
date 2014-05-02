@@ -66,6 +66,10 @@
 				<button id="fundAlertSuccessButton" type="button" class="close">×</button>
 				<span id="fundAlertSuccessText">Successful fund query!</span>
 			</div>
+			<div class="alert alert-info fade in" id="fundAlertLoading"
+                style="display: none; border-width: 2px; border-color: grey; margin-top: 1em;">
+                <span id="fundAlertLoadingText">Loading...</span>
+            </div>
 			<div class="alert alert-danger fade in" id="fundAlertError"
 				style="display: none; border-width: 2px; border-color: black; margin-top: 1em">
 				<button id="fundAlertErrorButton" type="button" class="close">×</button>
@@ -82,7 +86,7 @@
 							<th class="col2 column">Type</th>
 							<th class="col3 column">Starting Worth ($)</th>
 							<th class="col4 column column-active">Ending Worth ($)</th>
-							<th class="col5 column">Return/Yr (%)</th>
+							<th class="col5 column">Return (%)</th>
 							<th class="col6 column">Cash ($)</th>
 							<th class="col7 column">Investments ($)</th>
 							<th class="col8 column">Majority Participant In</th>
@@ -94,6 +98,27 @@
 				</table>
 			</div>
 
+			<!-- Modal -->
+			<div class="modal fade" id="viewFundTransactionsModal" tabindex="-1"
+				role="dialog" aria-labelledby="viewFundTransactionsModalLabel" aria-hidden="true">
+				<div class="modal-dialog" id="addTransactionHelpModalDialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal"
+								aria-hidden="true">&times;</button>
+							<h4 class="modal-title" id="viewFundTransactionsModalLabel"></h4>
+						</div>
+						<div id="viewFundTransactionsModalBody" class="modal-body" style="color: grey;">
+                            <p>Fund Transactions</p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default"
+								data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- modal -->
 		</div>
 		<!-- //main content -->
 	</div>

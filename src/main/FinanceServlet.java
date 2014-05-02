@@ -1,7 +1,7 @@
 package main;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +19,7 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.json.JSONException;
 
+import database.DatabaseManager;
 import queryTypes.AddTransaction;
 import queryTypes.CompanyQuery;
 import queryTypes.FundQuery;
@@ -32,11 +33,19 @@ public class FinanceServlet extends HttpServlet {
 	private static final int STATUS_SUCCESS = 0;
 	private static final int STATUS_ERROR = 400;
 	private static final int STATUS_NOT_IMPLEMENTED = 501;
+	
+	public static long totalDBAccessTime = 0;
+	public static long numDBAccesses = 0;
+	public static long totalCalcInvestmentTimeCompany = 0;
+	public static long totalCalcInvestmentTimeFund = 0;
+	
+	public static Connection con;
 
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		System.out.println("Float max: " + Float.MAX_VALUE);
+		long time = System.currentTimeMillis();
 		String message = "";
 		try {
+			con = DatabaseManager.getNewConnection();
 			String method = request.getParameter("method");
 			String json = request.getParameter("json");
 			System.out.println("GET Request: method=" + method + "   json=" + json + "\n");
@@ -50,6 +59,9 @@ public class FinanceServlet extends HttpServlet {
 				} else if (method.equals(Utilities.METHOD_FUND_QUERY)) {
 					System.out.println("Fund Query request received.");
 					message = FundQuery.fundQuery(json);
+				} else if(method.equals(Utilities.METHOD_GET_FUND_TRANSACTIONS)){
+					System.out.println("Get fund transactions request received.");
+					message = FundQuery.getFundTransactions(json);
 				} else if (method.equals(Utilities.METHOD_ADD_TRANSACTION)) {
 					System.out.println("Add Transaction request received." + json);
 					AddTransaction.addTransactionFromJSON(json);
@@ -83,11 +95,28 @@ public class FinanceServlet extends HttpServlet {
 			response.setStatus(STATUS_ERROR);
 			response.getWriter().write("Internal error");
 			e.printStackTrace();
+		} finally {
+			if (con != null) {
+				try {
+					con.close();
+				} catch (SQLException ignore) {
+				}
+			}
+			time = System.currentTimeMillis() - time;
+			System.out.println("Num Accesses: " + numDBAccesses + ". Total DB Access Time: " + (float)totalDBAccessTime/1000);
+			System.out.println("Total time in getInvestmentAmount() for companies: " + (float)totalCalcInvestmentTimeCompany/1000);
+			System.out.println("Total time in getInvestmentAmount() for funds: " + (float)totalCalcInvestmentTimeFund/1000);
+			System.out.println("Time for transaction: " + (float)time/1000);
+			numDBAccesses = 0;
+			totalDBAccessTime = 0;
+			totalCalcInvestmentTimeCompany = 0;
+			totalCalcInvestmentTimeFund = 0;
 		}
 
 	}
 
 	public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		long time = System.currentTimeMillis();
 		String message = "";
 		int status = STATUS_SUCCESS;
 		System.out.println("POST request received.");
@@ -102,6 +131,7 @@ public class FinanceServlet extends HttpServlet {
 				FileItemFactory factory = new DiskFileItemFactory();
 				ServletFileUpload upload = new ServletFileUpload(factory);
 				try {
+					con = DatabaseManager.getNewConnection();
 					List<FileItem> fields = upload.parseRequest(request);
 					System.out.println("Size of list: " + fields.size());
 					Iterator<FileItem> it = fields.iterator();
@@ -135,10 +165,21 @@ public class FinanceServlet extends HttpServlet {
 					}
 				} catch (FileUploadException e) {
 					e.printStackTrace();
-					
 				} catch (IllegalArgumentException e) {
 					message = e.getMessage();
 					status = STATUS_ERROR;
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} finally {
+					if (con != null) {
+						try {
+							con.close();
+						} catch (SQLException ignore) {
+						}
+					}
+					time = System.currentTimeMillis() - time;
+					System.out.println("Time for transaction: " + (float)time/1000);
 				}
 			}
 		} else {

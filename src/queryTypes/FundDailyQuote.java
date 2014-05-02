@@ -3,6 +3,7 @@ package queryTypes;
 import java.util.Date;
 import java.util.HashMap;
 
+import main.FinanceServlet;
 import utilities.Utilities;
 
 public class FundDailyQuote {
@@ -72,12 +73,16 @@ public class FundDailyQuote {
 			// If the security is a fund, s_val will be a dollar amount.
 			float s_val = numSharesPerSecurity.get(s);
 			if (Utilities.isCompany(s)) {
+				long time = System.currentTimeMillis();
 				float quote = CompanyQuery.getQuoteOfCompany(s, this.year, this.month, this.day);
 				investmentAmount += (quote * s_val);
+				FinanceServlet.totalCalcInvestmentTimeCompany += (System.currentTimeMillis() - time);
 			} else {
+				long time = System.currentTimeMillis();
 				float percentReturn = FundWorth.calcFundPercentReturn(this.fundDailyQuoteSecurityName, s,
 						Utilities.getDateObject(year, month, day));
 				investmentAmount += (s_val + (s_val * percentReturn));
+				FinanceServlet.totalCalcInvestmentTimeFund += (System.currentTimeMillis() - time);
 			}
 		}
 		return investmentAmount;

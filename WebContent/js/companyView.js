@@ -77,7 +77,9 @@ function companyQuery() {
 	console.log(filter);
 
 	var message = "";
+	$("#companyAlertLoading").show();
 	var successCallback = function(data) {
+		$("#companyAlertLoading").hide();
 		if (data['symbol'] == null || data['startPrice'] == null || data['endPrice'] == null || data['returnRate'] == null || data['high'] == null || data['low'] == null || data['risk'] == null) {
 			errorCallback("Error: Server response was missing necessary data.");
 			return;
@@ -107,6 +109,7 @@ function companyQuery() {
 
 	};
 	var errorCallback = function(errorMessage) {
+		$("#companyAlertLoading").hide();
 		$("#companyAlertError").show();
 		$("#companyAlertErrorText").html(errorMessage);
 	};

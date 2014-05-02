@@ -26,6 +26,12 @@ var controller = new function() {
 		};
 	};
 	
+	var FundTransactions = function() {
+		return {
+			fund : ""
+		};
+	};
+	
 	var NewTransaction = function() {
 		return {
 			transaction : ""
@@ -129,6 +135,9 @@ var controller = new function() {
 			fundQuery : function(fundFilter, successCallback, errorCallback) {
 				server.ajaxRequest("GET", "fundQuery", fundFilter, successCallback, errorCallback);
 			},
+			getFundTransactions : function(fundName, successCallback, errorCallback) {
+				server.ajaxRequest("GET", "getFundTransactions", fundName, successCallback, errorCallback);
+			},
 			addTransaction : function(transaction, successCallback, errorCallback) {
 				server.ajaxRequest("GET", "addTransaction", transaction, successCallback, errorCallback);
 			},
@@ -144,6 +153,10 @@ var controller = new function() {
 			fundFilter : function() {
 				return new FundFilter();
 			}
+		},
+		
+		fundTransactions : function() {
+			return new FundTransactions();
 		},
 		
 		newTransaction : function() {
