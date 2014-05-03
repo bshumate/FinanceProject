@@ -14,14 +14,6 @@
 				</div>
 
 				<div style="margin-top: .5em">
-					<input type="checkbox" id="fundIncDecCheckbox"> <select
-						id="fundIncDecMenu">
-						<option>Increasing</option>
-						<option>Decreasing</option>
-					</select> every year
-				</div>
-
-				<div style="margin-top: .5em">
 					<label class="checkbox-inline"> <input type="checkbox"
 						id="fundIndividualCheckbox" value="option1" checked>
 						Individuals
@@ -32,22 +24,15 @@
 				</div>
 				<div class="radio">
 					<label> <input type="radio" name="fundOptionsRadios"
-						id="fundOptionDisplayAll" value="1" checked> Display all
+						id="fundOptionDisplayAll" value="showAll" checked> Display all
 						results
 					</label>
 				</div>
 				<div class="radio">
 					<label> <input type="radio" name="fundOptionsRadios"
-						id="fundOptionDisplayOnly" value="2" disabled="true">
-						Display only:&nbsp;&nbsp;<input type="text"
-						placeholder="AAPL,GOOG,MSFT ...">
-					</label>
-				</div>
-				<div class="radio">
-					<label> <input type="radio" name="fundOptionsRadios"
-						id="fundOptionDisplayAllBut" value="3" disabled="true">
-						Display all but:&nbsp;&nbsp;<input type="text"
-						placeholder="AAPL,GOOG,MSFT ...">
+						id="fundOptionDisplayOnly" value="showOnly">
+						Display only:&nbsp;&nbsp;<input type="text" id="fundShowOnly"
+						placeholder="fund_1, ind_2...">
 					</label>
 				</div>
 				<div class="submit">

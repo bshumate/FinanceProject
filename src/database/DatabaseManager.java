@@ -11,6 +11,13 @@ import java.util.HashMap;
 
 import main.FinanceServlet;
 
+/**
+ * DatabaseManager manages all communication with the MySQL database. It can return connections, execute updates, and
+ * execute queries
+ * 
+ * @author Ben_Shumate
+ * 
+ */
 public class DatabaseManager {
 
 	private static String username = "root";
@@ -20,27 +27,59 @@ public class DatabaseManager {
 	public static final int QUERY = 0;
 	public static final int UPDATE = 1;
 
+	/**
+	 * Get a new connection to the database
+	 * 
+	 * @return The Connection object
+	 * @throws SQLException
+	 */
 	public static Connection getNewConnection() throws SQLException {
 		return DriverManager.getConnection(("jdbc:mysql://") + dbLocation, username, pwd);
 	}
 
-	public static String executeUpdate(String query) throws ClassNotFoundException, SQLException {
+	/**
+	 * Executes an update
+	 * 
+	 * @param update
+	 *            A String representation of the update
+	 * @return result of the update
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 */
+	public static String executeUpdate(String update) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
 		Statement st = FinanceServlet.con.createStatement();
-		return String.valueOf(st.executeUpdate(query));
-
+		return String.valueOf(st.executeUpdate(update));
 	}
 
-	public static void executeUpdate(PreparedStatement query) throws ClassNotFoundException, SQLException {
+	/**
+	 * Executes an update
+	 * 
+	 * @param update
+	 *            A PreparedStatement representation of the update
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 */
+	public static void executeUpdate(PreparedStatement update) throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
 		long time = System.currentTimeMillis();
 		FinanceServlet.numDBAccesses++;
-		query.executeUpdate();
+		update.executeUpdate();
 		time = System.currentTimeMillis() - time;
 		FinanceServlet.totalDBAccessTime += time;
-
 	}
 
+	/**
+	 * Executes a query and stores the response as a set of String arrays
+	 * 
+	 * @param query
+	 *            Query to be executed
+	 * @param response
+	 *            Response object to store the database response
+	 * @return The response size
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 */
 	public static int executeQuery(PreparedStatement query, HashMap<String, String[]> response)
 			throws ClassNotFoundException, SQLException {
 

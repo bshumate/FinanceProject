@@ -6,9 +6,15 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import main.FinanceServlet;
 import utilities.Utilities;
 
+/**
+ * Represents the worth of a given fund over time. A {@code FundDailyQuote} object is stored for every day that this
+ * fund had a change in value (other than ordinary appreciation of its holdings)
+ * 
+ * @author Ben_Shumate
+ * 
+ */
 public class FundWorth {
 
 	private String name;
@@ -58,6 +64,15 @@ public class FundWorth {
 		return this.initialFundWorth;
 	}
 
+	/**
+	 * Given a date, retreive a FundDailyQuote object, creating a new one from the most recent quote if no quote exists
+	 * for this date
+	 * 
+	 * @param year
+	 * @param month
+	 * @param day
+	 * @return A FundDailyQuote object for this date
+	 */
 	public FundDailyQuote getFundQuoteForDay(int year, int month, int day) {
 		Date d = Utilities.getDateObject(year, month, day);
 		Entry<Date, FundDailyQuote> e = fundDailyQuotes.floorEntry(d);
@@ -67,11 +82,18 @@ public class FundWorth {
 			// Get the first element
 			quoteToReturn = fundDailyQuotes.firstEntry().getValue();
 		} else {
+			// Make a new quote by copying the existing one
 			quoteToReturn = new FundDailyQuote(existingQuote, year, month, day);
 		}
 		return quoteToReturn;
 	}
 
+	/**
+	 * Add cash to this fund on the specified date
+	 * 
+	 * @param dollarAmount
+	 * @param date
+	 */
 	public void addCash(Float dollarAmount, Date date) {
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
@@ -81,8 +103,15 @@ public class FundWorth {
 		this.totalAdditionalCashAdded += dollarAmount;
 	}
 
+	/**
+	 * This fund is buying another security
+	 * 
+	 * @param purchasedName
+	 * @param dollarAmount
+	 * @param date
+	 */
 	public void fundBuyFund(String purchasedName, Float dollarAmount, Date date) {
-		//System.out.println("FundBuyFund: " + this.name + " buying " + purchasedName);
+		// System.out.println("FundBuyFund: " + this.name + " buying " + purchasedName);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
@@ -91,18 +120,31 @@ public class FundWorth {
 		dayFundBought.put(purchasedName, date);
 	}
 
+	/**
+	 * This fund is selling one of its securities
+	 * 
+	 * @param soldName
+	 * @param date
+	 * @return
+	 */
 	public float fundSellFund(String soldName, Date date) {
-		//System.out.println("FundSellFund: " + this.name + " selling " + soldName);
+		// System.out.println("FundSellFund: " + this.name + " selling " + soldName);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
 		}
 		return quote.fundSell(soldName, dayFundBought.get(soldName));
-		// dayFundBought.remove(soldName);
 	}
 
+	/**
+	 * A shareholder is buying into this fund
+	 * 
+	 * @param shareHolderName
+	 * @param dollarAmount
+	 * @param date
+	 */
 	public void shareHolderBuy(String shareHolderName, Float dollarAmount, Date date) {
-		//System.out.println("ShareHolderBuy: " + shareHolderName + " buying " + this.name);
+		// System.out.println("ShareHolderBuy: " + shareHolderName + " buying " + this.name);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
@@ -110,8 +152,15 @@ public class FundWorth {
 		quote.shareHolderBuy(shareHolderName, dollarAmount);
 	}
 
+	/**
+	 * A shareholder is selling out of this fund
+	 * 
+	 * @param shareHolderName
+	 * @param date
+	 * @return
+	 */
 	public float shareHolderSell(String shareHolderName, Date date) {
-		//System.out.println("ShareHolderSell: " + shareHolderName + " selling " + this.name);
+		// System.out.println("ShareHolderSell: " + shareHolderName + " selling " + this.name);
 		FundDailyQuote quote = fundDailyQuotes.get(date);
 		if (quote == null) {
 			quote = addFundDailyQuote(date);
@@ -119,18 +168,34 @@ public class FundWorth {
 		return quote.shareHolderSell(shareHolderName);
 	}
 
+	/**
+	 * Gets the first quote from the set of FundDailyQuotes
+	 * 
+	 * @return
+	 */
 	public FundDailyQuote getFirstQuote() {
 		return fundDailyQuotes.firstEntry().getValue();
 	}
 
+	/**
+	 * Gets the last quote from the set of FundDailyQuotes
+	 * 
+	 * @return
+	 */
 	public FundDailyQuote getLastQuote() {
 		return fundDailyQuotes.lastEntry().getValue();
 	}
 
+	/**
+	 * Gets the majority participant of this fund (using the most recent quote)
+	 * 
+	 * @return
+	 */
 	public String getMajorityParticipant() {
 		return this.getLastQuote().getMajorityParticipant();
 	}
-	
+
+	// Adds a FundDailyQuote for a given date
 	private FundDailyQuote addFundDailyQuote(Date date) {
 		FundDailyQuote quote;
 		Calendar c = Calendar.getInstance();
@@ -149,20 +214,52 @@ public class FundWorth {
 		return quote;
 	}
 
+	/**
+	 * The purchase date for this fund should be updated. This would happen when a shareholder buys or sells, and the
+	 * fund needs to re-distribute its assets
+	 * 
+	 * @param myName
+	 * @param targetFundName
+	 * @param newDate
+	 */
 	public static void updateDayFundBought(String myName, String targetFundName, Date newDate) {
 		FundWorth.fundWorthObjects.get(myName).dayFundBought.put(targetFundName, newDate);
 	}
 
+	/**
+	 * Gets the date that {@code targetFundName} was purchased
+	 * 
+	 * @param myName
+	 * @param targetFundName
+	 * @return
+	 */
 	public static Date getDayFundBought(String myName, String targetFundName) {
 		return FundWorth.fundWorthObjects.get(myName).dayFundBought.get(targetFundName);
 	}
 
+	/**
+	 * Calculates the percent return of a fund from the earliest possible start date until {@code toDate}
+	 * 
+	 * @param myName
+	 * @param targetFundName
+	 * @param toDate
+	 * @return
+	 */
 	public static float calcFundPercentReturn(String myName, String targetFundName, Date toDate) {
 		// Assume the From Date is the purchase date of the target fund
 		return calcFundPercentReturn(myName, targetFundName,
 				FundWorth.fundWorthObjects.get(myName).dayFundBought.get(targetFundName), toDate);
 	}
 
+	/**
+	 * Calculates the percent return of a fund in the given date interfal
+	 * 
+	 * @param myName
+	 * @param targetFundName
+	 * @param fromDate
+	 * @param toDate
+	 * @return
+	 */
 	public static float calcFundPercentReturn(String myName, String targetFundName, Date fromDate, Date toDate) {
 		float startingWorth = 0;
 		float endingWorth = 0;
@@ -182,16 +279,36 @@ public class FundWorth {
 
 		return ((endingWorth - startingWorth) / startingWorth);
 	}
-	
-	public static float calcTotalFundPercentReturn(FundWorth fw, FundDailyQuote toQuote, float startNetWorth, float endNetWorth) {
-		float adjustedEndNetWorth = (endNetWorth * (1 - toQuote.getTotalShareHolderStake())) - fw.totalAdditionalCashAdded;
+
+	/**
+	 * Calculates the total return of the fund over all valid time, assuming we already know the net worths at the
+	 * beginning and end of this time
+	 * 
+	 * @param fw
+	 * @param toQuote
+	 * @param startNetWorth
+	 * @param endNetWorth
+	 * @return
+	 */
+	public static float calcTotalFundPercentReturn(FundWorth fw, FundDailyQuote toQuote, float startNetWorth,
+			float endNetWorth) {
+		float adjustedEndNetWorth = (endNetWorth * (1 - toQuote.getTotalShareHolderStake()))
+				- fw.totalAdditionalCashAdded;
 		return ((adjustedEndNetWorth - startNetWorth) / startNetWorth);
 	}
 
+	/**
+	 * Clears all FundWorth objects
+	 */
 	public static void clearFundWorthSet() {
 		fundWorthObjects.clear();
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Object#toString()
+	 */
 	public String toString() {
 		String s = "FundWorth for " + this.name + ". Initial Value: " + this.initialFundWorth + ".\n";
 		for (Date d : this.fundDailyQuotes.keySet()) {

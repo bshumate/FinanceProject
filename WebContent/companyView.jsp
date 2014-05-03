@@ -21,22 +21,15 @@
 
 				<div class="radio">
 					<label> <input type="radio" name="companyOptionsRadios"
-						id="companyOptionDisplayAll" value="1" checked=true>
+						id="companyOptionDisplayAll" value="displayAll" checked=true>
 						Display all results
 					</label>
 				</div>
 				<div class="radio">
 					<label> <input type="radio" name="companyOptionsRadios"
-						id="companyOptionDisplayOnly" value="2" disabled="true">
-						Display only:&nbsp;&nbsp;<input type="text"
-						placeholder="GOOGL,MSFT, UA ...">
-					</label>
-				</div>
-				<div class="radio">
-					<label> <input type="radio" name="companyOptionsRadios"
-						id="companyOptionDisplayAllBut" value="3" disabled="true">
-						Display all but:&nbsp;&nbsp;<input type="text"
-						placeholder="GOOGL,MSFT ...">
+						id="companyOptionDisplayOnly" value="showOnly">
+						Display only:&nbsp;&nbsp;<input type="text" id="companyShowOnly"
+						placeholder="GOOGL,MSFT, T ...">
 					</label>
 				</div>
 				<div class="submit">

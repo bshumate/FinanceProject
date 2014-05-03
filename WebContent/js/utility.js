@@ -1,3 +1,5 @@
+// Contains utility functions to be called by the other Javascript files
+
 var daysInMonths = new Array();
 daysInMonths["01"] = 31;
 daysInMonths["02"] = 28;
@@ -12,9 +14,10 @@ daysInMonths["10"] = 31;
 daysInMonths["11"] = 30;
 daysInMonths["12"] = 31;
 
+// Validate a pair of dates
 function validateDate(fromDate, toDate, formatType) {
 
-	if (formatType = "MM-DD-YYYY") {
+	if (formatType == "MM-DD-YYYY") {
 		var dateRegEx = new RegExp("[0-9][0-9](\/|-)[0-9][0-9](\/|-)[0-9][0-9][0-9][0-9]");
 
 		if (fromDate != "" && dateRegEx.exec(fromDate) == null) { // Check for mm/dd/yyyy
@@ -56,6 +59,7 @@ function validateDate(fromDate, toDate, formatType) {
 	}
 }
 
+// Allows for downloading of .csv files
 function download(filename, text) {
 	var pom = document.createElement('a');
 	pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));

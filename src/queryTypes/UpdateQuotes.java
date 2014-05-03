@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
@@ -17,9 +16,24 @@ import org.json.JSONException;
 import utilities.Utilities;
 import database.DatabaseManager;
 
+/**
+ * UpdateQuotes is used to update the stock quotes via the Yahoo Finance quote system
+ * 
+ * @author Ben_Shumate
+ * 
+ */
 public class UpdateQuotes {
 
-	public static String updateQuotes(String json) throws ClassNotFoundException, SQLException, JSONException, IOException {
+	/**
+	 * Updates all of the quotes
+	 * 
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 * @throws JSONException
+	 * @throws IOException
+	 */
+	public static String updateQuotes() throws ClassNotFoundException, SQLException, JSONException, IOException {
 
 		PreparedStatement query = FinanceServlet.con
 				.prepareStatement("INSERT IGNORE INTO Company (ticker) VALUES (?);");
@@ -34,7 +48,7 @@ public class UpdateQuotes {
 		int i = 0;
 		for (String s : Utilities.stockList) {
 			i++;
-			if(i<70)
+			if (i < 70)
 				continue;
 			try {
 				System.out.println(i + ": Quote for " + s);
@@ -53,15 +67,15 @@ public class UpdateQuotes {
 						int day = Integer.parseInt(inputLine.substring(8, 10));
 						String[] input = inputLine.split(",");
 						float price = Float.parseFloat(input[6]); // The "adjusted close" column in the Yahoo csv format
-						String query2 = "REPLACE INTO Quotes (ticker, year, month, day, price) VALUES (\""+s+"\","+year+","+month+","+day+","+price+");";
-						//System.out.println(query2);
-						/*query.clearParameters();
-						query = con.prepareStatement("REPLACE INTO Quotes (ticker, year, month, day, price) VALUES (?,?,?,?,?);");
-						query.setString(1, s);
-						query.setInt(2, year);
-						query.setInt(3, month);
-						query.setInt(4, day);
-						query.setFloat(5, price);*/
+						String query2 = "REPLACE INTO Quotes (ticker, year, month, day, price) VALUES (\"" + s + "\","
+								+ year + "," + month + "," + day + "," + price + ");";
+						// System.out.println(query2);
+						/*
+						 * query.clearParameters(); query =
+						 * con.prepareStatement("REPLACE INTO Quotes (ticker, year, month, day, price) VALUES (?,?,?,?,?);"
+						 * ); query.setString(1, s); query.setInt(2, year); query.setInt(3, month); query.setInt(4,
+						 * day); query.setFloat(5, price);
+						 */
 						DatabaseManager.executeUpdate(query2);
 					}
 				}

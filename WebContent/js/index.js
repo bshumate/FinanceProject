@@ -1,3 +1,5 @@
+// Used for general appearance of the page
+
 $(document).ready(function() {
 	console.log("The document is ready!");
 

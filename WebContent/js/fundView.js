@@ -1,3 +1,5 @@
+// Represents the Fund View tab on the website
+
 var g_fundName = [];
 var g_fundType = [];
 var g_fundStartWorth = [];
@@ -32,6 +34,7 @@ function fundViewInit() {
 };
 
 function getFundTransactions(fund) {
+	// Given a specific fund, get all associated transactions
 	console.log("getFundTransactions")
 	console.log(fund);
 	var fundTransactions = controller.fundTransactions();
@@ -72,19 +75,6 @@ function fundQuery() {
 		return; // There was an error processing the date
 	}
 
-	// Get increasing/decreasing value
-	var increasing = false;
-	var decreasing = false;
-	var interval = "";
-	if ($("#fundIncDecCheckbox").is(':checked')) {
-		if ($("#fundIncDecMenu").val() == "Increasing") {
-			increasing = true;
-		} else {
-			decreasing = true;
-		}
-		interval = $("#fundIntervalMenu").val();
-	}
-
 	// Get individual and portfolio checkboxes
 	var individual = false;
 	var portfolio = false;
@@ -94,20 +84,29 @@ function fundQuery() {
 	if ($("#fundPortfolioCheckbox").is(':checked')) {
 		portfolio = true;
 	}
+	
+	// Get display only value
+	var isShowOnly = false;
+	var showOnly = [];
+	if ($('input[name="fundOptionsRadios"]:checked').val() == "showOnly") { // DisplayOnly is checked
+		console.log("only show was checked.");
+		isShowOnly = true;
+		showOnly = $("#fundShowOnly").val().split(",");
+		console.log(showOnly);
+	}
 
-	// TODO - Implement showOnly and showAllBut
-
+	// Build the filter to send to the server
 	filter.fromDate = fromDate;
 	filter.toDate = toDate;
-	filter.increasing = increasing;
-	filter.decreasing = decreasing;
-	filter.interval = interval;
 	filter.individual = individual;
 	filter.portfolio = portfolio;
+	filter.isShowOnly = isShowOnly;
+	filter.onlyShow = showOnly;
 
 	var message = "";
 	$("#fundAlertLoading").show();
 	var successCallback = function(data) {
+		// Build the table of fund information from the response
 		$("#fundAlertLoading").hide();
 		if (data['name'] == null || data['type'] == null || data['startWorth'] == null || data['endWorth'] == null || data['returnRate'] == null || data['cash'] == null || data['investments'] == null) {
 			errorCallback("Error: Server response was missing necessary data.");
@@ -134,9 +133,7 @@ function fundQuery() {
 		for (var i = 0; i < deepCopyEndWorth.length; i++) {
 			rankingOfNetWorths[i] = deepCopyEndWorth[i];
 		}
-
-		console.log(rankingOfNetWorths);
-
+		
 		for (var i = 0; i < g_fundType.length; i++) {
 			if (g_fundType[i] == 'I')
 				g_fundType[i] = 'Individual';

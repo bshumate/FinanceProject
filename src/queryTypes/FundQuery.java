@@ -1,39 +1,67 @@
 package queryTypes;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import main.FinanceServlet;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import utilities.Utilities;
 import database.DatabaseManager;
 
+/**
+ * @author Ben_Shumate
+ * 
+ */
 public class FundQuery {
-	public float startNetWorth = -1;
-	public float endNetWorth = -1;
-	public float returnRate = -1;
-	public float cash = -1;
-	public float investments = -1;
+	private float startNetWorth = -1;
+	private float endNetWorth = -1;
+	private float returnRate = -1;
+	private float cash = -1;
+	private float investments = -1;
 
+	/**
+	 * 
+	 */
 	public static int START_NET_WORTH = 0;
+	/**
+	 * 
+	 */
 	public static int END_NET_WORTH = 1;
+	/**
+	 * 
+	 */
 	public static int RETURN_RATE = 2;
+	/**
+	 * 
+	 */
 	public static int HIGH = 3;
+	/**
+	 * 
+	 */
 	public static int LOW = 4;
 
+	/**
+	 * 
+	 */
 	public FundQuery() {
 		// Default constructor
 	}
 
+	/**
+	 * @param id
+	 *            ID of the desired field
+	 * @return the desired field
+	 */
 	public float getAttribute(int id) {
 		if (id == START_NET_WORTH)
 			return startNetWorth;
@@ -49,6 +77,12 @@ public class FundQuery {
 			return -1;
 	}
 
+	/**
+	 * @param id
+	 *            ID of the desired field
+	 * @param attr
+	 *            data to set
+	 */
 	public void setAttribute(int id, float attr) {
 		if (id == START_NET_WORTH)
 			startNetWorth = attr;
@@ -62,27 +96,59 @@ public class FundQuery {
 			investments = attr;
 	}
 
+	/**
+	 * Returns a list of all the transactions made by a given fund. The request will be JSON with the following form:
+	 * 
+	 * <pre>
+	 * {
+	 * 	"fund":"fund_name"
+	 * }
+	 * </pre>
+	 * 
+	 * The response will be JSON with the following form:
+	 * 
+	 * <pre>
+	 * {
+	 * 	"response":"[transaction1, transaction2]"
+	 * }
+	 * </pre>
+	 * 
+	 * @param json
+	 *            Contains the desired fund
+	 * @return A list of transactions made by the fund
+	 * @throws SQLException
+	 * @throws JSONException
+	 * @throws ClassNotFoundException
+	 */
 	public static String getFundTransactions(String json) throws SQLException, JSONException, ClassNotFoundException {
 		PreparedStatement query = null;
 		try {
-			HashMap<String, String[]> response = new HashMap<String, String[]>();
+			// Get the input
 			JSONObject dataIn = new JSONObject(json);
 			String fund = dataIn.getString("fund");
+
+			// Get the type of the fund
+			HashMap<String, String[]> response = new HashMap<String, String[]>();
 			query = FinanceServlet.con.prepareStatement("SELECT type FROM Fund WHERE name=?");
 			query.setString(1, fund);
 			DatabaseManager.executeQuery(query, response);
+
+			// Set the type of the fund
 			String fundType = response.get("type")[0];
 			if (fundType.equals("I")) {
 				fundType = "individual";
 			} else {
 				fundType = "fund";
 			}
-			
-			query = FinanceServlet.con.prepareStatement("SELECT security, security2, type, year, month, day, amount FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC, type ASC");
+
+			// Get all associated transactions from the database
+			query = FinanceServlet.con
+					.prepareStatement("SELECT security, security2, type, year, month, day, amount FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC, type ASC");
 			query.setString(1, fund);
-			
+
 			DatabaseManager.executeQuery(query, response);
-			
+
+			// Construct a list of strings of properly-formated transactions
 			String[] securities = response.get("security");
 			String[] securities2 = response.get("security2");
 			String[] types = response.get("type");
@@ -90,9 +156,9 @@ public class FundQuery {
 			String[] months = response.get("month");
 			String[] days = response.get("day");
 			String[] amounts = response.get("amount");
-			
+
 			String[] queries = new String[securities.length];
-			for(int i = 0; i < securities.length; i++) {
+			for (int i = 0; i < securities.length; i++) {
 				String queryText = "";
 				if (AddTransaction.CREATE_TYPE.equals(types[i])) {
 					queryText += (fundType + ", ");
@@ -100,27 +166,27 @@ public class FundQuery {
 					queryText += "buy, ";
 				} else if (AddTransaction.SELL_TYPE.equals(types[i])) {
 					queryText += "sell, ";
-				} else if (AddTransaction.SELLBUY_TYPE.equals(types[i])){
+				} else if (AddTransaction.SELLBUY_TYPE.equals(types[i])) {
 					queryText += "sellbuy, ";
 				}
-				
+
 				queryText += (fund + ", ");
 				if (!AddTransaction.CREATE_TYPE.equals(types[i])) {
 					queryText += (securities[i] + ", ");
 				}
-				
+
 				if (AddTransaction.SELLBUY_TYPE.equals(types[i])) {
 					queryText += (securities2[i] + ", ");
 				}
-				
+
 				if (AddTransaction.BUY_TYPE.equals(types[i]) || AddTransaction.CREATE_TYPE.equals(types[i])) {
 					queryText += (amounts[i] + ", ");
 				}
-				
+
 				queryText += (years[i] + "-" + months[i] + "-" + days[i]);
 				queries[i] = queryText;
 			}
-			
+
 			return (new JSONObject()).put("response", queries).toString();
 		} finally {
 			// Always close prepared statements
@@ -132,11 +198,48 @@ public class FundQuery {
 			}
 		}
 	}
-	
+
+	/**
+	 * Get information about funds in the database. The request from the web app. This request should be JSON and have
+	 * the following form:
+	 * 
+	 * <pre>
+	 * {
+	 * 	fromDate : "",
+	 * 	toDate : "",
+	 * 	individual : true,
+	 * 	portfolio : true,
+	 * 	isShowOnly : false,
+	 * 	onlyShow : []
+	 * }
+	 * </pre>
+	 * 
+	 * Information about the funds in the database. The response will be JSON and has the following form:
+	 * 
+	 * <pre>
+	 *  {
+	 * 	"symbol":"[ticker1, ticker2]",
+	 * 	"startPrice":"[12.34, 23.45]",
+	 * 	"endPrice":"[45.56, 56.67]",
+	 * 	"returnRate":"[2.23, 24.43, -1.24]",
+	 * 	"high":"[51.10, 71.10]",
+	 * 	"low":"[11.12, 12.23]",
+	 * 	"risk":"[4.0, 9.8]"
+	 * }
+	 * </pre>
+	 * 
+	 * @param json
+	 *            Request for company information
+	 * @return JSON response with fund information
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 * @throws JSONException
+	 */
 	public static String fundQuery(String json) throws ClassNotFoundException, SQLException, JSONException {
 		PreparedStatement query = null;
 		long calcTime = 0;
 		try {
+			// Get the input data
 			System.out.println("Request: " + json);
 			JSONObject dataIn = new JSONObject(json);
 			int fromDay = dataIn.getString("fromDate").equals("") ? 1 : Integer.parseInt(dataIn.getString("fromDate")
@@ -151,10 +254,20 @@ public class FundQuery {
 					.substring(0, 2));
 			int toYear = dataIn.getString("toDate").equals("") ? 2013 : Integer.parseInt(dataIn.getString("toDate")
 					.substring(6, 10));
-			// boolean increasing = dataIn.getBoolean("increasing");
-			// boolean decreasing = dataIn.getBoolean("decreasing");
 			boolean individual = dataIn.getBoolean("individual");
 			boolean portfolio = dataIn.getBoolean("portfolio");
+			boolean isShowOnly = dataIn.getBoolean("isShowOnly");
+			JSONArray onlyShow = dataIn.getJSONArray("onlyShow");
+			System.out.println("Only show: " + onlyShow);
+			HashSet<String> onlyShowSet = new HashSet<String>();
+			if (isShowOnly) {
+				for (int i = 0; i < onlyShow.length(); i++) {
+					String s = onlyShow.getString(i).trim();
+					if (s != null && !s.trim().equals("")) {
+						onlyShowSet.add(s);
+					}
+				}
+			}
 
 			// Make sure that the "From Date" is on or after Jan 3rd, 2005, which is the first market day of 2005
 			if (fromYear < Utilities.EARLIEST_YEAR
@@ -182,11 +295,13 @@ public class FundQuery {
 			String[] fundNames = response.get("name");
 			String[] fundTypes = response.get("type");
 			for (int i = 0; i < responseSize; i++) {
-				fundNameToFundType.put(fundNames[i], fundTypes[i]);
+				if (!isShowOnly || (isShowOnly && onlyShowSet.contains(fundNames[i]))) {
+					fundNameToFundType.put(fundNames[i], fundTypes[i]);
+				}
 			}
 
 			// Iterate through each of these fund names (portfolios first, individuals second)
-			LinkedList<String> fundsToCalculate = new LinkedList<String>(Arrays.asList(response.get("name")));
+			LinkedList<String> fundsToCalculate = new LinkedList<String>(fundNameToFundType.keySet());
 			HashMap<String, FundWorth> fundWorths = new HashMap<String, FundWorth>();
 			HashMap<String, Float> tempSellBuySoldPrice = new HashMap<String, Float>(); // "security sold,fund" -->
 																						// price
@@ -195,11 +310,14 @@ public class FundQuery {
 				// Get all transactions where the fund name matches the current fund name
 				String fundToProcess = fundsToCalculate.pollFirst();
 				query = FinanceServlet.con
-						.prepareStatement("SELECT * FROM Activity WHERE year < 2014 AND name=? OR security=? OR security2=? ORDER BY year ASC, month ASC, day ASC, type ASC");
-				query.setString(1, fundToProcess);
+						.prepareStatement("SELECT * FROM Activity WHERE year <= ? AND (name=? OR security=? OR security2=?) ORDER BY year ASC, month ASC, day ASC, type ASC");
+				query.setInt(1, toYear);
 				query.setString(2, fundToProcess);
 				query.setString(3, fundToProcess);
+				query.setString(4, fundToProcess);
+				long time = System.currentTimeMillis();
 				responseSize = DatabaseManager.executeQuery(query, response);
+				FinanceServlet.totalFundLookupTime += (System.currentTimeMillis() - time);
 				if (responseSize < 1) {
 					// There are no transactions associated with this fund
 					continue;
@@ -217,7 +335,7 @@ public class FundQuery {
 						}
 						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
 																	// processed later
-						//System.out.println("1st check: " + fundToProcess + " depends on " + securityToCheck);
+						System.out.println("1st check: " + fundToProcess + " depends on " + securityToCheck);
 
 						skipThisSecurity = true;
 						break;
@@ -241,7 +359,7 @@ public class FundQuery {
 						}
 						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
 																	// processed later
-						//System.out.println("2nd check: " + fundToProcess + " depends on " + securityToCheck);
+						System.out.println("2nd check: " + fundToProcess + " depends on " + securityToCheck);
 						skipThisSecurity = true;
 						break;
 					}
@@ -249,7 +367,8 @@ public class FundQuery {
 				if (skipThisSecurity) {
 					continue;
 				}
-				//System.out.println("Processing " + fundToProcess);
+
+				System.out.println("Processing " + fundToProcess);
 
 				// Process transactions - build a FundWorth object for this fund during processing
 				String[] names = response.get("name");
@@ -333,7 +452,8 @@ public class FundQuery {
 							FundWorth fw = fundWorths.get(fundToProcess);
 							Float buyAmount = null;
 							if (Utilities.isCompany(securities[i])) {
-								buyAmount = getSellAmountForCompany(securities[i], name[i], years[i], months[i], days[i]);
+								buyAmount = getSellAmountForCompany(securities[i], name[i], years[i], months[i],
+										days[i]);
 							} else {
 								String tempSellBuyName = securities[i] + "," + names[i];
 								buyAmount = tempSellBuySoldPrice.get(tempSellBuyName);
@@ -359,8 +479,8 @@ public class FundQuery {
 				// fundWorths.put(fundToProcess, null);
 			}
 			calcTime = System.currentTimeMillis() - calcTime;
-			System.out.println("Time to process/build FundWorth objects: " + (float)calcTime/1000);
-			
+			System.out.println("Time to process/build FundWorth objects: " + (float) calcTime / 1000);
+
 			calcTime = System.currentTimeMillis();
 			// Calculate the majority participants - ask each fund for its majority participant
 			HashMap<String, String> majorityParticipantMap = new HashMap<String, String>();
@@ -398,27 +518,20 @@ public class FundQuery {
 			String[] type = new String[finalFundList.size()];
 			String[] majorityParticipant = new String[finalFundList.size()];
 			int i = 0;
-			long calcWorthTime = 0;
-			long calcReturnTime = 0;
 			for (String s : finalFundList) {
 				// Only print out the security if it was processed/didn't have 0 associated transactions
 				if (fundWorths.containsKey(s)) {
 					FundWorth fw = fundWorths.get(s);
 					FundDailyQuote toQuote = fw.getFundQuoteForDay(toYear, toMonth, toDay);
-					long tempWTime = System.currentTimeMillis();
 					float startWorthF = fw.getInitialFundWorth();
 					float endWorthF = toQuote.getNetWorth();
-					calcWorthTime += (System.currentTimeMillis() - tempWTime);
 					float cashF = fw.getFundQuoteForDay(toYear, toMonth, toDay).getCashAmount();
-					
+
 					name[i] = s;
 					startWorth[i] = String.format("%.02f", startWorthF);
 					endWorth[i] = String.format("%.02f", endWorthF);
-					long tempTime = System.currentTimeMillis();
-					returnRate[i] = String.format(
-							"%.02f",
+					returnRate[i] = String.format("%.02f",
 							100 * FundWorth.calcTotalFundPercentReturn(fw, toQuote, startWorthF, endWorthF));
-					calcReturnTime += (System.currentTimeMillis() - tempTime);
 
 					cash[i] = String.format("%.02f", cashF);
 					investments[i] = String.format("%.02f", endWorthF - cashF);
@@ -429,7 +542,8 @@ public class FundQuery {
 					i++;
 				}
 			}
-			System.out.println("Time calculating net worth: " + (float)calcWorthTime/1000);
+
+			// Build the JSON response
 			queryResult.put("name", name);
 			queryResult.put("startWorth", startWorth);
 			queryResult.put("endWorth", endWorth);
@@ -443,7 +557,7 @@ public class FundQuery {
 		} finally {
 			FundWorth.clearFundWorthSet(); // Done processing - remove this set of FundWorth objects
 			calcTime = System.currentTimeMillis() - calcTime;
-			System.out.println("Time to format result: " + (float)calcTime/1000);
+			System.out.println("Time to format result: " + (float) calcTime / 1000);
 			// Always close prepared statements
 			if (query != null) {
 				try {
@@ -454,16 +568,16 @@ public class FundQuery {
 		}
 	}
 
-	private static float getSellAmountForCompany(String company, String fundThatSold, String sellYearS, String sellMonthS, String sellDayS)
-			throws SQLException, ClassNotFoundException {
+	// Used in a sellbuy to determine how much cash would be raised from the sale of a previously-bought company
+	private static float getSellAmountForCompany(String company, String fundThatSold, String sellYearS,
+			String sellMonthS, String sellDayS) throws SQLException, ClassNotFoundException {
 		PreparedStatement query = null;
 		HashMap<String, String[]> response = new HashMap<String, String[]>();
 		int responseSize = 0;
 		int sellYear = Integer.parseInt(sellYearS);
 		int sellMonth = Integer.parseInt(sellMonthS);
 		int sellDay = Integer.parseInt(sellDayS);
-		
-		System.out.println("GetSellAmountForCompany: " + company + ", " + fundThatSold + ", " + sellYear + "-" + sellMonth + "-" + sellDay);
+
 		query = FinanceServlet.con
 				.prepareStatement("SELECT * FROM Activity WHERE name=? AND (security=? || security2=?) ORDER BY year ASC, month ASC, day ASC, type ASC");
 		query.setString(1, fundThatSold);

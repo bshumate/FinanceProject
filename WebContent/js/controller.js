@@ -1,3 +1,5 @@
+// The controller handles AJAX communication, and provides an API to the server for the client
+
 var controller = new function() {
 
 	// Object definitions
@@ -7,22 +9,18 @@ var controller = new function() {
 			toDate : "",
 			increasing : false,
 			decreasing : false,
-			interval : "",
+			isShowOnly : false,
 			onlyShow : [],
-			showAllBut : []
 		};
 	};
 	var FundFilter = function() {
 		return {
 			fromDate : "",
 			toDate : "",
-			increasing : false,
-			decreasing : false,
-			interval : "",
 			individual : true,
 			portfolio : true,
+			isShowOnly : false,
 			onlyShow : [],
-			showAllBut : []
 		};
 	};
 	
@@ -83,7 +81,7 @@ var controller = new function() {
 						}
 					}
 				});
-			} else {
+			} else { // GET request
 				var requestData = {
 					method : apiMethod
 				};

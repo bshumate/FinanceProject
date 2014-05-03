@@ -1,3 +1,5 @@
+// Represents the Add Transaction tab on the webite
+
 function addTransactionInit() {
 
 	$("#addTransactionSubmit").click(function() {
@@ -9,25 +11,7 @@ function addTransactionInit() {
 	$("#addTransactionFileUpload").submit(function(e) {
 		$("#addTransactionAlertSuccess").hide();
 		$("#addTransactionAlertError").hide();
-		/*var formData = new FormData(this);
-		$.ajax({
-			url : "FinanceServlet",
-			type : 'POST',
-			data : formData,
-			mimeType : "multipart/form-data",
-			contentType : false,
-			cache : false,
-			processData : false,
-			success : function(data, textStatus, jqXHR) {
-				$("#addTransactionAlertSuccess").show();
-			},
-			error : function(jqXHR, textStatus, errorThrown) {
-				console.log(jqXHR.responseText);
-				$("#addTransactionAlertErrorText").text(jqXHR.responseText);
-				$("#addTransactionAlertError").show();
-			}
-		});*/
-		e.preventDefault(); //Prevent Default action.
+		e.preventDefault(); //Prevent Default action, which would open a new tab
 		transactionFileUpload(this, e);
 	});
 
@@ -40,6 +24,7 @@ function addTransactionInit() {
 }
 
 function transactionTextSubmit(text) {
+	// Submit a single-line text transaction to the server
 	$("#addTransactionAlertLoading").show();
 	var successCallback = function(data) {
 		console.log("SUCCESS");
@@ -58,14 +43,14 @@ function transactionTextSubmit(text) {
 		$("#addTransactionAlertSuccess").hide();
 		$("#addTransactionAlertLoading").hide();
 	};
-	var transaction =  controller.newTransaction();
+	var transaction = controller.newTransaction();
 	transaction.transaction = text;
-	
+
 	controller.server.addTransaction(transaction, successCallback, errorCallback);
-	
 }
 
 function transactionFileUpload(form, e) {
+	// Submit a transaction file to the server
 	$("#addTransactionAlertLoading").show();
 	var successCallback = function(data) {
 		$("#addTransactionAlertError").hide();
@@ -81,7 +66,6 @@ function transactionFileUpload(form, e) {
 	};
 	e.preventDefault(); // Prevent Default action.
 	controller.server.uploadTransactionFile(form, successCallback, errorCallback);
-
 }
 
 $(document).ready(function() {

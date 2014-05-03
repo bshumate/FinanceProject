@@ -1,3 +1,5 @@
+// Represents the Company tab on the Website
+
 var g_companySymbol = [];
 var g_companyStartPrice = [];
 var g_companyEndPrice = [];
@@ -14,18 +16,18 @@ function companyViewInit() {
 	$("#quotesSubmitButton").click(function() {
 		updateQuotes();
 	});
-	
+
 	$("#companyExportToCSV").click(
 		function() {
 			console.log("Company export to CSV clicked.");
 			var stringToCSV = "Symbol, Starting Price ($), Ending Price ($), Return/Yr (%), High ($), Low ($), Risk (%)\n";
 			for (var i = 0; i < g_companySymbol.length; i++) {
-				stringToCSV += (g_companySymbol[i] + ", " + g_companyStartPrice[i] + ", " + g_companyEndPrice[i] + ", " + g_companyReturnRate[i] + ", " + g_companyHigh[i] + ", "
-					+ g_companyLow[i] + ", " + g_companyRisk[i] + "\n");
+				stringToCSV += (g_companySymbol[i] + ", " + g_companyStartPrice[i] + ", " + g_companyEndPrice[i] + ", " + g_companyReturnRate[i] + ", " + g_companyHigh[i] + ", " + g_companyLow[i]
+					+ ", " + g_companyRisk[i] + "\n");
 			}
 			download("companyView.csv", stringToCSV);
 		});
-	
+
 	$("#companyAlertSuccessButton").click(function(e) {
 		$("#companyAlertSuccess").hide();
 	});
@@ -57,34 +59,43 @@ function companyQuery() {
 	// Get increasing/decreasing value
 	var increasing = false;
 	var decreasing = false;
-	var interval = "";
 	if ($("#companyIncDecCheckbox").is(':checked')) {
 		if ($("#companyIncDecMenu").val() == "Increasing") {
 			increasing = true;
 		} else {
 			decreasing = true;
 		}
-		interval = $("#companyIntervalMenu").val();
 	}
 
-	// TODO - Implement showOnly and showAllBut
+	// Get display only value
+	var isShowOnly = false;
+	var showOnly = [];
+	if ($('input[name="companyOptionsRadios"]:checked').val() == "showOnly") { // DisplayOnly is checked
+		console.log("only show was checked.");
+		isShowOnly = true;
+		showOnly = $("#companyShowOnly").val().split(",");
+	}
 
+	// Build the filter to send to the server
 	filter.fromDate = fromDate;
 	filter.toDate = toDate;
 	filter.increasing = increasing;
 	filter.decreasing = decreasing;
 	filter.interval = interval;
+	filter.isShowOnly = isShowOnly;
+	filter.onlyShow = showOnly;
 	console.log(filter);
 
 	var message = "";
 	$("#companyAlertLoading").show();
 	var successCallback = function(data) {
+		// Build the table of company information
 		$("#companyAlertLoading").hide();
 		if (data['symbol'] == null || data['startPrice'] == null || data['endPrice'] == null || data['returnRate'] == null || data['high'] == null || data['low'] == null || data['risk'] == null) {
 			errorCallback("Error: Server response was missing necessary data.");
 			return;
 		}
-		
+
 		g_companySymbol = data['symbol'];
 		g_companyStartPrice = data['startPrice'];
 		g_companyEndPrice = data['endPrice'];
@@ -92,7 +103,7 @@ function companyQuery() {
 		g_companyHigh = data['high'];
 		g_companyLow = data['low'];
 		g_companyRisk = data['risk'];
-		
+
 		var tableUpdate = '';
 		var i = 0;
 		for (var i = 0; i < data['symbol'].length; i++) {
@@ -109,6 +120,7 @@ function companyQuery() {
 
 	};
 	var errorCallback = function(errorMessage) {
+		// Show error message
 		$("#companyAlertLoading").hide();
 		$("#companyAlertError").show();
 		$("#companyAlertErrorText").html(errorMessage);

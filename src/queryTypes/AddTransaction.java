@@ -1,6 +1,5 @@
 package queryTypes;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -18,16 +17,51 @@ import org.json.JSONObject;
 import utilities.Utilities;
 import database.DatabaseManager;
 
+/**
+ * Adds transactions to the database. Transactions are received from the web application in either a single-line string
+ * of text, or in a .csv file that can contain many transactions. Input is validated before being inserted into the
+ * database, and will not be added if it is invalid.
+ * 
+ * @author Ben_Shumate
+ * 
+ */
 public class AddTransaction {
 
+	/**
+	 * String representing create transactions in the DB
+	 */
 	public static final String CREATE_TYPE = "A";
+	/**
+	 * String representing buy transactions in the DB
+	 */
 	public static final String BUY_TYPE = "B";
+	/**
+	 * String representing sell transactions in the DB
+	 */
 	public static final String SELL_TYPE = "S";
+	/**
+	 * String representing sellbuy transactions in the DB
+	 */
 	public static final String SELLBUY_TYPE = "SB";
 
+	/**
+	 * String representing individual funds in the DB
+	 */
 	public static final String INDIVIDUAL_TYPE = "I";
+	/**
+	 * String representing portfolio funds in the DB
+	 */
 	public static final String PORTFOLIO_TYPE = "P";
 
+	/**
+	 * Iterates through each transaction in the String array, and calls {@link #addTransaction(String)
+	 * addTransaction(transaction)}
+	 * 
+	 * @param transactions
+	 *            An array of Strings that holds each transaction to be entered into the database
+	 * @throws IllegalArgumentException
+	 *             See {@link #addTransaction(String) addTransaction}
+	 */
 	public static void addTransaction(String[] transactions) throws IllegalArgumentException {
 		int i = 0;
 		try {
@@ -39,12 +73,41 @@ public class AddTransaction {
 		}
 	}
 
+	/**
+	 * Extracts the transaction from the JSON string, and calls {@link #addTransaction(String) addTransaction}
+	 * 
+	 * @param json
+	 *            A JSON-Formatted String that contains the string to be processed
+	 * @throws JSONException
+	 * @throws IllegalArgumentException
+	 *             See {@link #addTransaction(String) addTransaction}
+	 */
 	public static void addTransactionFromJSON(String json) throws JSONException, IllegalArgumentException {
 		JSONObject dataIn = new JSONObject(json);
 		String transaction = dataIn.getString("transaction");
 		addTransaction(transaction.trim());
 	}
 
+	/**
+	 * Receives a string representing a transaction to be inserted into the database. Determines whether this string is
+	 * valid, and if so, which type of transaction it represents. Then, the transaction checked against existing
+	 * database entries for conflicts before being inserted.
+	 * 
+	 * Transactions can take one of two forms:
+	 * <ul>
+	 * <li><i style="font-family: monospace; color: #B00000">&lt;fund|individual&gt;, &lt;name&gt;, &lt;dollar
+	 * figure&gt;, &lt;YYYY-MM-DD&gt;</i> - Add cash to an individual or portfolio, creating it if it does not exist.</li>
+	 * <li><i style="font-family: monospace; color: #B00000;">&lt;buy|sell&gt;, &lt;name&gt;, &lt;stock symbol|fund
+	 * name&gt;, &lt;dollar amount&gt;, &lt;YYYY-MM-DD&gt;</i> - buy or sell a number of shares on a specific date
+	 * (assume closing value) through cash on hand.</li>
+	 * </ul>
+	 * 
+	 * @param transaction
+	 *            A string representing a transaction
+	 * @throws IllegalArgumentException
+	 *             Thrown whenever the transaction is invalid, either because of a syntax error or because of a conflict
+	 *             with the current data in the database
+	 */
 	public static void addTransaction(String transaction) throws IllegalArgumentException {
 		// Create RegEx to match transactions
 		// Integrity checks on database - make sure any funds referenced have already been created, must buy before
@@ -126,10 +189,29 @@ public class AddTransaction {
 		}
 	}
 
+	/**
+	 * Adds a fund create transaction to the database
+	 * 
+	 * @param fundName
+	 *            Name of the fund to be created
+	 * @param type
+	 *            "I" for individual or "P" for portfolio
+	 * @param amount
+	 *            Initial dollar amount for the fund
+	 * @param year
+	 *            Creation year
+	 * @param month
+	 *            Creation month
+	 * @param day
+	 *            Creation day
+	 * @throws IllegalArgumentException
+	 *             Thrown when the input is invalid. This can happen if the type parameter is invalid, or the name of
+	 *             the fund is already the name of an existing company.
+	 */
 	private static void addCreate(String fundName, String type, float amount, int year, int month, int day)
 			throws IllegalArgumentException {
-		//System.out.println("Create: " + fundName + ", " + type + ", " + amount + ", " + year + ", " + month + ", "
-		//		+ day);
+		// System.out.println("Create: " + fundName + ", " + type + ", " + amount + ", " + year + ", " + month + ", "
+		// + day);
 
 		if (Utilities.isCompany(fundName)) {
 			throw new IllegalArgumentException("The fund name cannot also be the ticker symbol of a company.");
@@ -183,9 +265,9 @@ public class AddTransaction {
 				}
 			}
 		}
-
 	}
 
+	// Verifies the buy transaction by checking it against the current data in the database
 	private static void verifyBuy(String fundName, String securityName, int year, int month, int day)
 			throws IllegalArgumentException {
 		PreparedStatement query = null;
@@ -216,7 +298,8 @@ public class AddTransaction {
 			}
 
 			// Check to make sure this fund hasn't already purchased this security before
-			query = FinanceServlet.con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+			query = FinanceServlet.con
+					.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
 			query.setString(1, fundName);
 			response.clear();
 			DatabaseManager.executeQuery(query, response);
@@ -270,14 +353,12 @@ public class AddTransaction {
 
 	}
 
+	// Adds a buy transaction to the database
 	private static void addBuy(String fundName, String securityName, float amount, int year, int month, int day)
 			throws IllegalArgumentException {
 		// Check to make sure no buys of this security exist in the database
 		// Check to make sure the fund and security exist. Ensure the security is not an individual, and if the fund is
 		// a portfolio, the security is a stock.
-
-		//System.out.println("Buy: " + fundName + ", " + securityName + ", " + amount + ", " + year + ", " + month + ", "
-		//		+ day);
 
 		// The fund name cannot be the same as an already-existing company
 		if (Utilities.isCompany(fundName)) {
@@ -315,6 +396,7 @@ public class AddTransaction {
 		}
 	}
 
+	// Verifies a sell transaction by checking it against existing data in the database
 	private static void verifySell(String fundName, String securityName, int year, int month, int day) {
 		PreparedStatement query = null;
 		try {
@@ -344,7 +426,8 @@ public class AddTransaction {
 			}
 
 			// Check to make sure this fund was purchased exactly 1 time before, but not yet sold
-			query = FinanceServlet.con.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
+			query = FinanceServlet.con
+					.prepareStatement("SELECT * FROM Activity WHERE name=? ORDER BY year ASC, month ASC, day ASC");
 			query.setString(1, fundName);
 			response.clear();
 			DatabaseManager.executeQuery(query, response);
@@ -402,9 +485,9 @@ public class AddTransaction {
 		}
 	}
 
+	// Adds a sell transaction to the database
 	private static void addSell(String fundName, String securityName, int year, int month, int day)
 			throws IllegalArgumentException {
-		//System.out.println("Sell: " + fundName + ", " + securityName + ", " + year + ", " + month + ", " + day);
 		// Make sure the everything exists, as in the buy case
 		// Make sure this transaction has occurred exactly 1 time before, and it was a buy that took place before this
 		// date
@@ -444,10 +527,11 @@ public class AddTransaction {
 		}
 	}
 
+	// Adds a sellbuy transaction to the database. Verification done with existing buy and sell verification methods.
 	private static void addSellBuy(String fundName, String soldSecurity, String boughtSecurity, int year, int month,
 			int day) throws IllegalArgumentException {
-		//System.out.println("Sellbuy: " + fundName + ", " + soldSecurity + ", " + boughtSecurity + ", " + year + ", "
-		//		+ month + ", " + day);
+		// System.out.println("Sellbuy: " + fundName + ", " + soldSecurity + ", " + boughtSecurity + ", " + year + ", "
+		// + month + ", " + day);
 
 		// The fund name cannot be the same as an already-existing company
 		if (Utilities.isCompany(fundName)) {
@@ -484,7 +568,5 @@ public class AddTransaction {
 				}
 			}
 		}
-
-		// Break up buy/sell into helper methods for validation, then call these helper methods in addSellBuy as well
 	}
 }

@@ -1,14 +1,15 @@
 package queryTypes;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import main.FinanceServlet;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -16,28 +17,64 @@ import utilities.QuoteDate;
 import utilities.Utilities;
 import database.DatabaseManager;
 
+/**
+ * Stores information about a given company. CompanyQuery Objects are used when processing a company query request from
+ * the web application.
+ * 
+ * @author Ben_Shumate
+ * 
+ */
 public class CompanyQuery {
 
-	public float startPrice = -1;
-	public float endPrice = -1;
-	public float returnRate = -1;
-	public float high = -1;
-	public float low = -1;
-	public float risk = -1;
+	private float startPrice = -1;
+	private float endPrice = -1;
+	private float returnRate = -1;
+	private float high = -1;
+	private float low = -1;
+	private float risk = -1;
 
+	/**
+	 * ID representing the {@link #startPrice startPrice} attribute
+	 */
 	public static int START_PRICE = 0;
+	/**
+	 * ID representing the {@link #endPrice endPrice} attribute
+	 */
 	public static int END_PRICE = 1;
+	/**
+	 * ID representing the {@link #returnRate returnRate} attribute
+	 */
 	public static int RETURN_RATE = 2;
+	/**
+	 * ID representing the {@link #high high} attribute
+	 */
 	public static int HIGH = 3;
+	/**
+	 * ID representing the {@link #low low} attribute
+	 */
 	public static int LOW = 4;
+	/**
+	 * ID representing the {@link #risk risk} attribute
+	 */
 	public static int RISK = 5;
-	
+
+	/**
+	 * A cache that holds previously-accessed quotes
+	 */
 	public static HashMap<QuoteDate, Float> quoteCache = new HashMap<QuoteDate, Float>();
 
+	/**
+	 * Default constructor
+	 */
 	public CompanyQuery() {
 		// Default constructor
 	}
 
+	/**
+	 * @param id
+	 *            ID of the desired data field
+	 * @return value of the desired data field
+	 */
 	public float getResponseData(int id) {
 		if (id == START_PRICE)
 			return startPrice;
@@ -55,6 +92,12 @@ public class CompanyQuery {
 			return -1;
 	}
 
+	/**
+	 * @param id
+	 *            ID of the desired data field
+	 * @param data
+	 *            data to be set
+	 */
 	public void setResponseData(int id, float data) {
 		if (id == START_PRICE)
 			startPrice = data;
@@ -71,6 +114,14 @@ public class CompanyQuery {
 	}
 
 	// Return -1 on error
+	/**
+	 * @param ticker
+	 * @param year_in
+	 * @param month_in
+	 * @param day_in
+	 * @return A quote for the given company on the given date, or the last previous closing date if this date is on a
+	 *         market close
+	 */
 	public static Float getQuoteOfCompany(String ticker, int year_in, int month_in, int day_in) {
 		PreparedStatement query = null;
 		HashMap<String, String[]> response = new HashMap<String, String[]>();
@@ -88,18 +139,22 @@ public class CompanyQuery {
 			day = Utilities.EARLIEST_DAY;
 		}
 		try {
+			// Check the cache to see if we already have this quote
 			QuoteDate tempQuote = new QuoteDate(ticker, year, month, day);
 			if (quoteCache.containsKey(tempQuote)) {
 				return quoteCache.get(tempQuote);
 			}
-			
-			query = FinanceServlet.con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? AND year=? AND month=? AND day=?");
+
+			query = FinanceServlet.con
+					.prepareStatement("SELECT price FROM Quotes WHERE ticker=? AND year=? AND month=? AND day=?");
 			int counter = 0;
-			
+
+			// Iterate until we get a valid quote, or until we've tried 10 times
 			while (responseSize < 1) {
 				counter++;
 				if (counter == 10) {
-					query = FinanceServlet.con.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year ASC, month ASC, day ASC LIMIT 1");
+					query = FinanceServlet.con
+							.prepareStatement("SELECT price FROM Quotes WHERE ticker=? ORDER BY year ASC, month ASC, day ASC LIMIT 1");
 					query.setString(1, ticker);
 					responseSize = DatabaseManager.executeQuery(query, response);
 					break;
@@ -121,9 +176,10 @@ public class CompanyQuery {
 						day = Utilities.maxDaysInMonth(month);
 					}
 				}
-				
+
 				tempQuote.setNew(year, month, day);
 				if (quoteCache.containsKey(tempQuote)) {
+					// Found a cached quote - no need to further query the database
 					return quoteCache.get(tempQuote);
 				}
 			}
@@ -132,7 +188,7 @@ public class CompanyQuery {
 				price = Float.parseFloat(prices[0]);
 				QuoteDate qd = new QuoteDate(ticker, year, month, day);
 				QuoteDate qd_in = new QuoteDate(ticker, year_in, month_in, day_in);
-				quoteCache.put(qd, price);
+				quoteCache.put(qd, price); // Add the quote to the cache
 				quoteCache.put(qd_in, price);
 			} else {
 				return -1F;
@@ -156,9 +212,46 @@ public class CompanyQuery {
 		}
 	}
 
+	/**
+	 * Processes a request and returns information about companies in the database. The request must be JSON formatted
+	 * in the following manner:
+	 * 
+	 * <pre>
+	 * {
+	 * 	"fromDate":"yyyy-mm-dd",
+	 * 	"toDate":"yyyy-mm-dd"
+	 * 	"increasing":true/false,
+	 * 	"decreasing":true/false,
+	 * 	"isShowOnly":true/false,
+	 * 	"onlyShow":["ticker1", "ticker2"]
+	 * }
+	 * </pre>
+	 * 
+	 * The response will be formatted as a JSON in the following manner:
+	 * 
+	 * <pre>
+	 * {
+	 * 	"symbol":"[ticker1, ticker2]",
+	 * 	"startPrice":"[12.34, 23.45]",
+	 * 	"endPrice":"[45.56, 56.67]",
+	 * 	"returnRate":"[2.23, 24.43, -1.24]",
+	 * 	"high":"[51.10, 71.10]",
+	 * 	"low":"[11.12, 12.23]",
+	 * 	"risk":"[4.0, 9.8]"
+	 * }
+	 * </pre>
+	 * 
+	 * @param json
+	 *            JSON-formatted company query request
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 * @throws JSONException
+	 */
 	public static String companyQuery(String json) throws ClassNotFoundException, SQLException, JSONException {
 		PreparedStatement query = null;
 		try {
+			// Read in and parse the JSON input
 			JSONObject dataIn = new JSONObject(json);
 			int fromDay = dataIn.getString("fromDate").equals("") ? 1 : Integer.parseInt(dataIn.getString("fromDate")
 					.substring(3, 5));
@@ -174,6 +267,18 @@ public class CompanyQuery {
 					.substring(6, 10));
 			boolean increasing = dataIn.getBoolean("increasing");
 			boolean decreasing = dataIn.getBoolean("decreasing");
+			boolean isShowOnly = dataIn.getBoolean("isShowOnly");
+			JSONArray onlyShow = dataIn.getJSONArray("onlyShow");
+			System.out.println("Only show: " + onlyShow);
+			HashSet<String> onlyShowSet = new HashSet<String>();
+			if (isShowOnly) {
+				for (int i = 0; i < onlyShow.length(); i++) {
+					String s = onlyShow.getString(i).trim();
+					if (s != null && !s.trim().equals("")) {
+						onlyShowSet.add(s);
+					}
+				}
+			}
 
 			// Set up a map to store query responses for processing
 			HashMap<String, CompanyQuery> responseMap = new HashMap<String, CompanyQuery>();
@@ -226,6 +331,8 @@ public class CompanyQuery {
 			String[] startPrices = response.get("price");
 			for (int i = 0; i < responseSize; i++) {
 				String ticker = tickers[i];
+				if (isShowOnly && !onlyShowSet.contains(ticker))
+					continue;
 				float startPrice = startPrices[i] != null ? Float.parseFloat(startPrices[i]) : -1;
 				CompanyQuery c;
 				if (responseMap.get(ticker) == null) {
@@ -253,6 +360,8 @@ public class CompanyQuery {
 			for (int i = 0; i < responseSize; i++) {
 				// Iterate through DB response, map tickers to response entry objects, fill in start price
 				String ticker = tickers[i];
+				if (isShowOnly && !onlyShowSet.contains(ticker))
+					continue;
 				float endPrice = endPrices[i] != null ? Float.parseFloat(endPrices[i]) : -1;
 				CompanyQuery c;
 				if (responseMap.get(ticker) == null) {
