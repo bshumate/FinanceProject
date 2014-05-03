@@ -238,7 +238,7 @@ public class AddTransaction {
 							+ " but was referred to as type " + response.get("type")[0]);
 				}
 			}
-
+			FundQuery.staleFunds.add(fundName);
 			// Insert this transaction into the database
 			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day, amount) VALUES (?, ?, ?, ?, ?, ?, ?);");
@@ -368,7 +368,9 @@ public class AddTransaction {
 		PreparedStatement query = null;
 		try {
 			verifyBuy(fundName, securityName, year, month, day);
-
+			FundQuery.staleFunds.add(fundName);
+			if (!Utilities.isCompany(securityName))
+				FundQuery.staleFunds.add(securityName);
 			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day, amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
 			query.setString(1, fundName);
@@ -500,7 +502,10 @@ public class AddTransaction {
 		PreparedStatement query = null;
 		try {
 			verifySell(fundName, securityName, year, month, day);
-
+			FundQuery.staleFunds.add(fundName);
+			if (!Utilities.isCompany(securityName))
+				FundQuery.staleFunds.add(securityName);
+			
 			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, type, year, month, day) VALUES (?, ?, ?, ?, ?, ?)");
 			query.setString(1, fundName);
@@ -542,6 +547,11 @@ public class AddTransaction {
 		try {
 			verifySell(fundName, soldSecurity, year, month, day);
 			verifyBuy(fundName, boughtSecurity, year, month, day);
+			FundQuery.staleFunds.add(fundName);
+			if (!Utilities.isCompany(soldSecurity))
+				FundQuery.staleFunds.add(soldSecurity);
+			if (!Utilities.isCompany(boughtSecurity))
+				FundQuery.staleFunds.add(boughtSecurity);
 
 			query = FinanceServlet.con
 					.prepareStatement("INSERT INTO Activity (name, security, security2, type, year, month, day) VALUES (?, ?, ?, ?, ?, ?, ?)");

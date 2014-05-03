@@ -15,6 +15,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import utilities.QuoteDate;
 import utilities.Utilities;
 import database.DatabaseManager;
 
@@ -23,32 +24,30 @@ import database.DatabaseManager;
  * 
  */
 public class FundQuery {
-	private float startNetWorth = -1;
-	private float endNetWorth = -1;
-	private float returnRate = -1;
-	private float cash = -1;
-	private float investments = -1;
+
+	private String[] names;
+	private String[] securities;
+	private String[] securities2;
+	private String[] types;
+	private String[] years;
+	private String[] months;
+	private String[] days;
+	private String[] amounts;
+
+	public static int NAMES = 0;
+	public static int SECURITIES = 1;
+	public static int SECURITIES2 = 2;
+	public static int TYPES = 3;
+	public static int YEARS = 4;
+	public static int MONTHS = 5;
+	public static int DAYS = 6;
+	public static int AMOUNTS = 7;
 
 	/**
-	 * 
+	 * A cache that holds previously-accessed fund queries. It stores lists of transactions for given funds
 	 */
-	public static int START_NET_WORTH = 0;
-	/**
-	 * 
-	 */
-	public static int END_NET_WORTH = 1;
-	/**
-	 * 
-	 */
-	public static int RETURN_RATE = 2;
-	/**
-	 * 
-	 */
-	public static int HIGH = 3;
-	/**
-	 * 
-	 */
-	public static int LOW = 4;
+	public static HashMap<String, FundQuery> fundCache = new HashMap<String, FundQuery>();
+	public static HashSet<String> staleFunds = new HashSet<String>();
 
 	/**
 	 * 
@@ -57,24 +56,42 @@ public class FundQuery {
 		// Default constructor
 	}
 
+	public FundQuery(String[] names, String[] securities, String[] securities2, String[] types, String[] years,
+			String[] months, String[] days, String[] amounts) {
+		this.names = names;
+		this.securities = securities;
+		this.securities2 = securities2;
+		this.types = types;
+		this.years = years;
+		this.months = months;
+		this.days = days;
+		this.amounts = amounts;
+	}
+
 	/**
 	 * @param id
 	 *            ID of the desired field
 	 * @return the desired field
 	 */
-	public float getAttribute(int id) {
-		if (id == START_NET_WORTH)
-			return startNetWorth;
-		else if (id == END_NET_WORTH)
-			return endNetWorth;
-		else if (id == RETURN_RATE)
-			return returnRate;
-		else if (id == HIGH)
-			return cash;
-		else if (id == LOW)
-			return investments;
+	public String[] getAttribute(int id) {
+		if (id == NAMES)
+			return deepCopy(names);
+		else if (id == SECURITIES)
+			return deepCopy(securities);
+		else if (id == SECURITIES2)
+			return deepCopy(securities2);
+		else if (id == TYPES)
+			return deepCopy(types);
+		else if (id == YEARS)
+			return deepCopy(years);
+		else if (id == MONTHS)
+			return deepCopy(months);
+		else if (id == DAYS)
+			return deepCopy(days);
+		else if (id == AMOUNTS)
+			return deepCopy(amounts);
 		else
-			return -1;
+			return new String[0];
 	}
 
 	/**
@@ -83,17 +100,23 @@ public class FundQuery {
 	 * @param attr
 	 *            data to set
 	 */
-	public void setAttribute(int id, float attr) {
-		if (id == START_NET_WORTH)
-			startNetWorth = attr;
-		else if (id == END_NET_WORTH)
-			endNetWorth = attr;
-		else if (id == RETURN_RATE)
-			returnRate = attr;
-		else if (id == HIGH)
-			cash = attr;
-		else if (id == LOW)
-			investments = attr;
+	public void setAttribute(int id, String[] attr) {
+		if (id == NAMES)
+			names = deepCopy(attr);
+		else if (id == SECURITIES)
+			securities = deepCopy(attr);
+		else if (id == SECURITIES2)
+			securities2 = deepCopy(attr);
+		else if (id == TYPES)
+			types = deepCopy(attr);
+		else if (id == YEARS)
+			years = deepCopy(attr);
+		else if (id == MONTHS)
+			months = deepCopy(attr);
+		else if (id == DAYS)
+			days = deepCopy(attr);
+		else if (id == AMOUNTS)
+			amounts = deepCopy(attr);
 	}
 
 	/**
@@ -306,27 +329,63 @@ public class FundQuery {
 			HashMap<String, Float> tempSellBuySoldPrice = new HashMap<String, Float>(); // "security sold,fund" -->
 																						// price
 			calcTime = System.currentTimeMillis();
+			String[] names = null;
+			String[] securities = null;
+			String[] securities2 = null;
+			String[] types = null;
+			String[] years = null;
+			String[] months = null;
+			String[] days = null;
+			String[] amounts = null;
 			while (!fundsToCalculate.isEmpty()) {
 				// Get all transactions where the fund name matches the current fund name
 				String fundToProcess = fundsToCalculate.pollFirst();
-				query = FinanceServlet.con
-						.prepareStatement("SELECT * FROM Activity WHERE year <= ? AND (name=? OR security=? OR security2=?) ORDER BY year ASC, month ASC, day ASC, type ASC");
-				query.setInt(1, toYear);
-				query.setString(2, fundToProcess);
-				query.setString(3, fundToProcess);
-				query.setString(4, fundToProcess);
-				long time = System.currentTimeMillis();
-				responseSize = DatabaseManager.executeQuery(query, response);
-				FinanceServlet.totalFundLookupTime += (System.currentTimeMillis() - time);
-				if (responseSize < 1) {
-					// There are no transactions associated with this fund
-					continue;
+
+				// If this fund is stale, or we don't have it cached, or it is in a transaction with a fund that is
+				// stale or uncached, a query is needed
+				if (staleFunds.contains(fundToProcess) || !fundCache.containsKey(fundToProcess)) {
+					query = FinanceServlet.con
+							.prepareStatement("SELECT * FROM Activity WHERE year <= ? AND (name=? OR security=? OR security2=?) ORDER BY year ASC, month ASC, day ASC, type ASC");
+					query.setInt(1, toYear);
+					query.setString(2, fundToProcess);
+					query.setString(3, fundToProcess);
+					query.setString(4, fundToProcess);
+					long time = System.currentTimeMillis();
+					responseSize = DatabaseManager.executeQuery(query, response);
+					FinanceServlet.totalFundLookupTime += (System.currentTimeMillis() - time);
+					if (responseSize < 1) {
+						// There are no transactions associated with this fund
+						continue;
+					}
+					// Process transactions - build a FundWorth object for this fund during processing
+					names = response.get("name");
+					securities = response.get("security");
+					securities2 = response.get("security2");
+					types = response.get("type");
+					years = response.get("year");
+					months = response.get("month");
+					days = response.get("day");
+					amounts = response.get("amount");
+					fundCache.put(fundToProcess, new FundQuery(names, securities, securities2, types, years, months,
+							days, amounts));
+					staleFunds.remove(fundToProcess);
+					System.out.println("Retreived a fund from the DB: " + fundToProcess);
+				} else {
+					names = fundCache.get(fundToProcess).getAttribute(NAMES);
+					securities = fundCache.get(fundToProcess).getAttribute(SECURITIES);
+					securities2 = fundCache.get(fundToProcess).getAttribute(SECURITIES2);
+					types = fundCache.get(fundToProcess).getAttribute(TYPES);
+					years = fundCache.get(fundToProcess).getAttribute(YEARS);
+					months = fundCache.get(fundToProcess).getAttribute(MONTHS);
+					days = fundCache.get(fundToProcess).getAttribute(DAYS);
+					amounts = fundCache.get(fundToProcess).getAttribute(AMOUNTS);
+					System.out.println("Retreived a cached fund: " + fundToProcess);
 				}
 
 				// If any of these transactions contain a bought/sold security that hasn't yet been processed, put this
 				// at the back of the list
 				boolean skipThisSecurity = false;
-				for (String securityToCheck : Arrays.asList(response.get("security"))) {
+				for (String securityToCheck : Arrays.asList(securities)) {
 					if (!securityToCheck.equals(fundToProcess) && !fundWorths.containsKey(securityToCheck)
 							&& !Utilities.isCompany(securityToCheck)) {
 						if (!fundsToCalculate.contains(securityToCheck)) {
@@ -335,7 +394,7 @@ public class FundQuery {
 						}
 						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
 																	// processed later
-						System.out.println("1st check: " + fundToProcess + " depends on " + securityToCheck);
+						//System.out.println("1st check: " + fundToProcess + " depends on " + securityToCheck);
 
 						skipThisSecurity = true;
 						break;
@@ -345,11 +404,9 @@ public class FundQuery {
 					continue;
 				}
 				// Check "security2" column - the "security2" column in a sellbuy depends on the "security" column
-				String[] security2 = response.get("security2");
-				String[] name = response.get("name");
-				for (int i = 0; i < security2.length; i++) {
-					String securityToCheck = security2[i];
-					if (!name[i].equals(fundToProcess)) // There will only be conflicts if the name depends on security2
+				for (int i = 0; i < securities2.length; i++) {
+					String securityToCheck = securities2[i];
+					if (!names[i].equals(fundToProcess)) // There will only be conflicts if the name depends on security2
 						continue;
 					if (!securityToCheck.isEmpty() && !securityToCheck.equals(fundToProcess)
 							&& !fundWorths.containsKey(securityToCheck) && !Utilities.isCompany(securityToCheck)) {
@@ -359,7 +416,7 @@ public class FundQuery {
 						}
 						fundsToCalculate.addLast(fundToProcess); // Add the current fund to the back of the list to be
 																	// processed later
-						System.out.println("2nd check: " + fundToProcess + " depends on " + securityToCheck);
+						//System.out.println("2nd check: " + fundToProcess + " depends on " + securityToCheck);
 						skipThisSecurity = true;
 						break;
 					}
@@ -368,19 +425,9 @@ public class FundQuery {
 					continue;
 				}
 
-				System.out.println("Processing " + fundToProcess);
+				//System.out.println("Processing " + fundToProcess);
 
-				// Process transactions - build a FundWorth object for this fund during processing
-				String[] names = response.get("name");
-				String[] securities = response.get("security");
-				String[] securities2 = response.get("security2");
-				String[] types = response.get("type");
-				String[] years = response.get("year");
-				String[] months = response.get("month");
-				String[] days = response.get("day");
-				String[] amounts = response.get("amount");
-
-				for (int i = 0; i < responseSize; i++) {
+				for (int i = 0; i < names.length; i++) {
 					Date transactionDate = Utilities.getDateObject(years[i], months[i], days[i]);
 					// System.out.println("Transaction: " + types[i] + "\tname: " + names[i] + "\tsecurities: " +
 					// securities[i]);
@@ -452,7 +499,7 @@ public class FundQuery {
 							FundWorth fw = fundWorths.get(fundToProcess);
 							Float buyAmount = null;
 							if (Utilities.isCompany(securities[i])) {
-								buyAmount = getSellAmountForCompany(securities[i], name[i], years[i], months[i],
+								buyAmount = getSellAmountForCompany(securities[i], names[i], years[i], months[i],
 										days[i]);
 							} else {
 								String tempSellBuyName = securities[i] + "," + names[i];
@@ -602,5 +649,13 @@ public class FundQuery {
 		}
 
 		return 0;
+	}
+	
+	private String[] deepCopy(String[] in) {
+		String[] ret = new String[in.length];
+		for(int i = 0; i < in.length; i++) {
+			ret[i] = in[i];
+		}
+		return ret;
 	}
 }
